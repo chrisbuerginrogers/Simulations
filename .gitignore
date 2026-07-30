@@ -1,0 +1,27 @@
+# Virtual environments
+.venv
+.python-version
+
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Training runs / experiment tracking (large, regenerable -- kept local only)
+logs/
+wandb/
+MUJOCO_LOG.TXT
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes

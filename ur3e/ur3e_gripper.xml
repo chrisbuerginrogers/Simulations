@@ -3,7 +3,11 @@
 <!-- Onshape https://cad.onshape.com/documents/87a344f6e92e0ae93ee04627/w/847ce457b030222b7a612eec/e/f1e1892850674427b39ef5e4 -->
 <mujoco model="ur3e_gripper">
   <compiler angle="radian" meshdir="assets" autolimits="true"/>
-  <option integrator="implicitfast"/>
+  <!-- integrator is NOT set here: mjlab's fixed-base mocap auto-wrap attaches this
+       spec onto a fresh default spec, and any <option> here gets silently discarded
+       in that merge (a "keeping parent value" warning on env build). The real
+       integrator is set once, in Python, via SimulationCfg(mujoco=MujocoCfg(...))
+       in ur3e_reach_env_cfg.py. -->
   <default>
     <default class="ur3e_gripper">
       <joint frictionloss="0.1" armature="0.1"/>

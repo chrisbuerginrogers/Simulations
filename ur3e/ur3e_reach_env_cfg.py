@@ -574,7 +574,11 @@ def get_ur3e_reach_env_cfg(
         rewards=_build_rewards(enable_collision_penalty),
         terminations=terminations,
         sim=SimulationCfg(
-            mujoco=MujocoCfg(timestep=0.01),
+            # integrator matches MujocoCfg's own default ("implicitfast") -- stated
+            # explicitly here because this is the one place it actually takes
+            # effect (see the comment in ur3e_gripper.xml for why it's not set
+            # there).
+            mujoco=MujocoCfg(timestep=0.01, integrator="implicitfast"),
         ),
         decimation=10,  # 10 * 0.01 = 0.1s per policy step, matching step_duration
                         # in run_policy_loop (real deployment).

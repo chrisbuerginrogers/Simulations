@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UR3e Reach — Config Builder</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --border: #d8d8dc;
+    --text: #1c1c1e;
+    --muted: #6b6b70;
+    --accent: #2f6feb;
+    --code-bg: #0d1117;
+    --code-text: #c9d1d9;
+    --selected: #e8f0fe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a;
+      --panel: #202124;
+      --border: #38393d;
+      --text: #eaeaea;
+      --muted: #9a9a9e;
+      --code-bg: #0d1117;
+      --code-text: #c9d1d9;
+      --selected: #253449;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 20px 28px 10px;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  header p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    padding: 0 28px 16px;
+    flex-wrap: wrap;
+  }
+  .toolbar button {
+    font-size: 0.85rem;
+    padding: 7px 14px;
+  }
+  .toolbar button.gear { font-weight: 600; }
+
+  .main {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: 18px;
+    padding: 0 28px 32px;
+    align-items: start;
+  }
+  @media (max-width: 800px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .reward-list { max-height: calc(100vh - 220px); overflow-y: auto; position: sticky; top: 16px; }
+  .reward-detail { min-height: 300px; }
+
+  h2 {
+    font-size: 1rem;
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .field {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+  }
+  .field label {
+    font-size: 0.86rem;
+    cursor: help;
+    border-bottom: 1px dotted var(--muted);
+  }
+  .field input[type="number"],
+  .field input[type="text"],
+  .field select {
+    width: 110px;
+    padding: 4px 6px;
+    font-size: 0.86rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .field input[type="checkbox"] { width: 18px; height: 18px; }
+
+  .reward-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+  .reward-row:hover { background: var(--bg); }
+  .reward-row.selected { background: var(--selected); border-color: var(--accent); }
+  .reward-row.disabled { opacity: 0.45; }
+  .reward-row .name {
+    font-size: 0.86rem;
+    font-weight: 600;
+    flex: 1;
+  }
+  .reward-row input[type="number"] {
+    width: 64px;
+    padding: 3px 5px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .reward-row input[type="checkbox"] { width: 16px; height: 16px; }
+
+  #detail-title { font-size: 1.05rem; margin: 0 0 8px; }
+  #detail-desc { color: var(--muted); font-size: 0.88rem; margin: 0 0 12px; }
+  .detail-placeholder { color: var(--muted); font-size: 0.9rem; }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin: 6px 0 0;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  button {
+    font-size: 0.76rem;
+    padding: 3px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+
+  .note { font-size: 0.76rem; color: var(--muted); margin: 4px 0 8px; line-height: 1.5; }
+  .code-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+  .code-title-row strong { font-size: 0.88rem; }
+
+  /* --- modal / overlay -------------------------------------------------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    z-index: 50;
+    overflow-y: auto;
+  }
+  .overlay.active { display: flex; }
+  .modal {
+    display: none;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 18px 22px 22px;
+  }
+  .modal.active { display: block; }
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  .modal-head span { font-size: 1.05rem; font-weight: 600; }
+  .modal-head .modal-actions { display: flex; gap: 8px; align-items: center; }
+  .modal-head button.close { font-size: 1rem; padding: 2px 9px; }
+  section { margin-bottom: 18px; }
+  section:last-child { margin-bottom: 0; }
+
+  .modal.wide { max-width: 960px; }
+  .modal-body-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 28px;
+  }
+  @media (max-width: 720px) {
+    .modal-body-cols { grid-template-columns: 1fr; }
+  }
+
+  /* --- custom tooltip (native title= is unreliable inside some embedded
+     webviews, e.g. VS Code's Simple Browser, so we render our own) -------- */
+  .tooltip-box {
+    position: fixed;
+    z-index: 200;
+    background: #1c1c1e;
+    color: #f2f2f2;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    padding: 7px 11px;
+    border-radius: 7px;
+    max-width: 280px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    display: none;
+  }
+  .tooltip-box.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>UR3e Reach — Config Builder</h1>
+  <p>Pick a reward term on the left to see its definition and Python source on the right. Use the buttons
+     below for physics/training settings and the generated config code.</p>
+</header>
+
+<div class="toolbar">
+  <button class="gear" onclick="openModal('settings')">⚙ Settings</button>
+  <button onclick="openModal('env')">Env / Physics Config Code</button>
+  <button onclick="openModal('rewards')">Reward Terms Code</button>
+  <button onclick="openModal('training')">Training / PPO Config Code</button>
+  <button onclick="openModal('files')">Generate Config/Command Files</button>
+</div>
+
+<div class="main">
+
+  <div class="panel reward-list">
+    <h2>Reward terms</h2>
+    <div id="reward-rows"><!-- rows injected by JS --></div>
+  </div>
+
+  <div class="panel reward-detail">
+    <div id="detail-empty" class="detail-placeholder">Select a reward term on the left to see its definition and code.</div>
+    <div id="detail-content" style="display:none">
+      <h2 id="detail-title" style="border:none; padding:0; margin-bottom:2px;"></h2>
+      <p id="detail-desc"></p>
+      <pre><code id="detail-code"></code></pre>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================== modals ============================== -->
+<div class="overlay" id="overlay" onclick="closeModalOnOverlay(event)">
+
+  <div class="modal wide" id="modal-settings">
+    <div class="modal-head">
+      <span>Settings</span>
+      <div class="modal-actions">
+        <button onclick="resetDefaults()">Reset</button>
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+
+    <div class="modal-body-cols">
+    <section>
+      <h2 style="border:none; padding:0;">Physics / Episode</h2>
+      <div class="field">
+        <label data-tip="Physics integration step, in seconds. Smaller = more accurate, more compute.">timestep</label>
+        <input type="number" id="timestep" value="0.01" step="0.001" min="0.0001">
+      </div>
+      <div class="field">
+        <label data-tip="MuJoCo integrator used for physics stepping. This repo's default is implicitfast.">integrator</label>
+        <select id="integrator">
+          <option>implicitfast</option>
+          <option>Euler</option>
+          <option>RK4</option>
+          <option>implicit</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-tip="Physics steps per policy step. decimation * timestep = seconds of sim time per policy step.">decimation</label>
+        <input type="number" id="decimation" value="10" step="1" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Episode length before time-out truncation, in seconds.">episode_length_s</label>
+        <input type="number" id="episode_length_s" value="22.0" step="0.5" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Number of parallel environments simulated together. Bigger = more GPU throughput needed, bigger PPO batch per rollout.">num_envs</label>
+        <input type="number" id="num_envs" value="512" step="1" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Distance between parallel envs in the viewer. Visual only, doesn't affect physics.">env_spacing</label>
+        <input type="number" id="env_spacing" value="2.0" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Max joint-angle delta (radians) applied per policy step for the 6D relative action.">action scale</label>
+        <input type="number" id="action_scale" value="0.08" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Whether self/table collision sensors + reward terms are attached at all. Turning this off also disables the self_collision/table_collision reward terms.">enable_collision_penalty</label>
+        <input type="checkbox" id="enable_collision_penalty" checked onchange="toggleCollisionRewards()">
+      </div>
+      <div class="field">
+        <label data-tip="Swaps in a velocity-clamped action variant, for visual validation only — not what a real checkpoint is trained against.">use_velocity_clamp</label>
+        <input type="checkbox" id="use_velocity_clamp">
+      </div>
+    </section>
+
+    <section>
+      <h2 style="border:none; padding:0;">Training (PPO / RSL-RL)</h2>
+      <div class="field">
+        <label data-tip="Checkpoint/log folder name under logs/rsl_rl/.">experiment_name</label>
+        <input type="text" id="experiment_name" value="ur3e_reach">
+      </div>
+      <div class="field">
+        <label data-tip="Training loop length, in PPO update iterations.">max_iterations</label>
+        <input type="number" id="max_iterations" value="2000" step="50" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Checkpoint save frequency, in iterations.">save_interval</label>
+        <input type="number" id="save_interval" value="50" step="1" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Rollout length per env before each PPO update. num_envs * num_steps_per_env = transitions per update.">num_steps_per_env</label>
+        <input type="number" id="num_steps_per_env" value="24" step="1" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Width of each hidden layer in the actor/critic MLP (Multi-Layer Perceptron). This task uses two layers, deliberately small since observations are only 18-dim.">hidden layer width</label>
+        <input type="number" id="hidden_width" value="128" step="8" min="8">
+      </div>
+      <div class="field">
+        <label data-tip="Activation function between hidden layers. ELU avoids the 'dead neuron' problem ReLU can have for negative inputs.">activation</label>
+        <select id="activation">
+          <option>elu</option>
+          <option>relu</option>
+          <option>tanh</option>
+          <option>selu</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-tip="Running mean/std normalization applied to observations before they hit the network.">obs_normalization</label>
+        <input type="checkbox" id="obs_normalization" checked>
+      </div>
+      <div class="field">
+        <label data-tip="Initial standard deviation of the Gaussian action distribution the policy samples from.">init_std</label>
+        <input type="number" id="init_std" value="1.0" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="PPO's policy-update clipping threshold — caps how far one update can move the policy.">clip_param</label>
+        <input type="number" id="clip_param" value="0.2" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Exploration bonus weight. Raised in this repo from 0.005 to slow a std collapse into a self-colliding local optimum.">entropy_coef</label>
+        <input type="number" id="entropy_coef" value="0.02" step="0.001" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Weight on the critic (value network) loss term.">value_loss_coef</label>
+        <input type="number" id="value_loss_coef" value="1.0" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Clips the critic loss the same way PPO clips the policy loss.">use_clipped_value_loss</label>
+        <input type="checkbox" id="use_clipped_value_loss" checked>
+      </div>
+      <div class="field">
+        <label data-tip="Passes over each rollout batch per PPO update.">num_learning_epochs</label>
+        <input type="number" id="num_learning_epochs" value="5" step="1" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Mini-batches per epoch.">num_mini_batches</label>
+        <input type="number" id="num_mini_batches" value="4" step="1" min="1">
+      </div>
+      <div class="field">
+        <label data-tip="Initial optimizer learning rate.">learning_rate</label>
+        <input type="number" id="learning_rate" value="0.001" step="0.0001" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Learning-rate schedule. 'adaptive' adjusts based on KL divergence (see desired_kl).">schedule</label>
+        <select id="schedule">
+          <option>adaptive</option>
+          <option>fixed</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-tip="Discount factor for future rewards.">gamma</label>
+        <input type="number" id="gamma" value="0.99" step="0.001" min="0" max="1">
+      </div>
+      <div class="field">
+        <label data-tip="GAE (Generalized Advantage Estimation) lambda.">lam</label>
+        <input type="number" id="lam" value="0.95" step="0.001" min="0" max="1">
+      </div>
+      <div class="field">
+        <label data-tip="Target KL divergence for the adaptive learning-rate schedule.">desired_kl</label>
+        <input type="number" id="desired_kl" value="0.01" step="0.001" min="0">
+      </div>
+      <div class="field">
+        <label data-tip="Gradient clipping threshold (max global grad norm).">max_grad_norm</label>
+        <input type="number" id="max_grad_norm" value="1.0" step="0.1" min="0">
+      </div>
+    </section>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-env">
+    <div class="modal-head">
+      <span>Env / Physics Config Code</span>
+      <div class="modal-actions">
+        <button onclick="copyBlock('out-env')">Copy</button>
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <pre><code id="out-env"></code></pre>
+  </div>
+
+  <div class="modal" id="modal-rewards">
+    <div class="modal-head">
+      <span>Reward Terms Code (<code>_build_rewards()</code>-style)</span>
+      <div class="modal-actions">
+        <button onclick="copyBlock('out-rewards')">Copy</button>
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <pre><code id="out-rewards"></code></pre>
+  </div>
+
+  <div class="modal" id="modal-training">
+    <div class="modal-head">
+      <span>Training / PPO Config Code</span>
+      <div class="modal-actions">
+        <button onclick="copyBlock('out-rl')">Copy</button>
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <pre><code id="out-rl"></code></pre>
+  </div>
+
+  <div class="modal wide" id="modal-files">
+    <div class="modal-head">
+      <span>Generate Config / Command Files</span>
+      <div class="modal-actions">
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+
+    <p class="note" style="font-size: 0.82rem; margin-bottom: 14px;">
+      These two files register a standalone <code>Mjlab-UR3e-Reach-Custom</code> task with
+      everything currently selected, so you don't have to hand-edit
+      <code>ur3e_reach_env_cfg.py</code> or <code>__init__.py</code>.
+    </p>
+
+    <div class="modal-body-cols">
+      <div>
+        <div class="code-title-row">
+          <strong>custom_ur3e_task.py</strong>
+          <button onclick="downloadPyFile()">Download</button>
+        </div>
+        <p class="note">
+          Save next to <code>ur3e_reach_env_cfg.py</code> -- either
+          <code>my_mjlab_project/src/my_mjlab_project/tasks/ur3e_reach/</code>
+          (for real training) or <code>Simulations/ur3e/</code> (to test in the notebook).
+          Then register it on import: add
+          <code>from . import custom_ur3e_task  # noqa: F401</code> to that package's
+          <code>__init__.py</code>, or just <code>import custom_ur3e_task</code> in a
+          notebook/script.
+        </p>
+        <pre><code id="out-py-file"></code></pre>
+      </div>
+      <div>
+        <div class="code-title-row">
+          <strong>train_custom.sh</strong>
+          <button onclick="downloadShFile()">Download</button>
+        </div>
+        <p class="note">
+          Save anywhere convenient and run with <code>bash train_custom.sh</code>. Edit the
+          <code>cd</code> line first if <code>my_mjlab_project</code> isn't at the path assumed
+          below.
+        </p>
+        <pre><code id="out-sh-file"></code></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Shared helper every distance-based reward calls into (not itself selectable,
+// prepended to reach_distance's code view for reference).
+// ---------------------------------------------------------------------------
+const EE_TO_TARGET_SRC = `def ee_to_target(env, asset_cfg: SceneEntityCfg, command_name: str) -> torch.Tensor:
+    """Vector from end-effector site to commanded target, world frame."""
+    asset = env.scene[asset_cfg.name]
+    ee_pos_w = asset.data.site_pos_w[:, asset_cfg.site_ids].squeeze(1)
+    target_pos_w = env.command_manager.get_command(command_name)
+    return target_pos_w - ee_pos_w`;
+
+// ---------------------------------------------------------------------------
+// Reward term metadata, matching _build_rewards() in ur3e_reach_env_cfg.py.
+// ---------------------------------------------------------------------------
+const REWARDS = [
+  {
+    id: "reach_distance",
+    weight: 1.0,
+    on: true,
+    desc: "Negative distance from end-effector to target -- the core dense shaping reward.",
+    func: "reach_distance_reward",
+    params: `{"asset_cfg": ee_cfg, "command_name": "reach_target"}`,
+    src: `def reach_distance_reward(
+    env, asset_cfg: SceneEntityCfg, command_name: str
+) -> torch.Tensor:
+    """Negative distance from end-effector to commanded target."""
+    diff = ee_to_target(env, asset_cfg, command_name)
+    return -torch.norm(diff, dim=-1)`,
+  },
+  {
+    id: "success_bonus",
+    weight: 1.0,
+    on: true,
+    desc: "+1 per step while within threshold (0.03m) of target -- rewards actually arriving, not just getting closer.",
+    func: "success_bonus",
+    params: `{"asset_cfg": ee_cfg, "command_name": "reach_target", "threshold": 0.03}`,
+    src: `def success_bonus(
+    env, asset_cfg: SceneEntityCfg, command_name: str, threshold: float = 0.03
+) -> torch.Tensor:
+    """
+    +1 per step while within \`threshold\` of the target, 0 otherwise.
+
+    reach_distance_reward alone has the same gradient far away and up
+    close -- nothing specifically rewards closing the last centimeter.
+    This gives a real, separate incentive to actually cross the success
+    threshold (and stay there), rather than just generally reducing
+    distance without ever quite arriving.
+    """
+    diff = ee_to_target(env, asset_cfg, command_name)
+    dist = torch.norm(diff, dim=-1)
+    return (dist < threshold).float()`,
+  },
+  {
+    id: "settle_penalty",
+    weight: -0.5,
+    on: true,
+    desc: "Penalizes joint velocity, but only once within threshold of target -- discourages spinning/oscillating at the goal without discouraging necessary motion to get there.",
+    func: "settle_penalty",
+    params: `{
+    "ee_asset_cfg": ee_cfg,
+    "arm_asset_cfg": arm_cfg,
+    "command_name": "reach_target",
+    "threshold": 0.03,
+}`,
+    src: `def settle_penalty(
+    env,
+    ee_asset_cfg: SceneEntityCfg,
+    arm_asset_cfg: SceneEntityCfg,
+    command_name: str,
+    threshold: float = 0.03,
+) -> torch.Tensor:
+    """
+    Penalizes joint velocity, but ONLY once within \`threshold\` of the
+    target -- while still far away, this is zero, so it doesn't discourage
+    necessary motion to get there.
+
+    Added specifically because the end_effector site sits almost exactly
+    on wrist_3's own rotation axis, so spinning wrist_3 (deliberately left
+    unlimited to match real hardware) barely moves the site's *position*
+    at all -- reach_distance_reward doesn't notice it, and joint_vel_l2's
+    weight is far too small to discourage it on its own. This term
+    specifically punishes continued motion once the position task is
+    already satisfied, rather than motion in general.
+    """
+    diff = ee_to_target(env, ee_asset_cfg, command_name)
+    dist = torch.norm(diff, dim=-1)
+    close = (dist < threshold).float()
+    arm = env.scene[arm_asset_cfg.name]
+    joint_vel = arm.data.joint_vel[:, arm_asset_cfg.joint_ids]
+    vel_cost = torch.sum(torch.square(joint_vel), dim=-1)
+    return close * vel_cost`,
+  },
+  {
+    id: "action_rate",
+    weight: -0.01,
+    on: true,
+    desc: "Built-in mjlab term; penalizes jerky/large action changes step-to-step.",
+    func: "mdp_rewards.action_rate_l2",
+    params: `{}`,
+    builtin: true,
+    src: `# Built into mjlab -- not duplicated here since it ships with the package.
+# See mjlab.envs.mdp.rewards.action_rate_l2 in
+# .venv/lib/python3.14/site-packages/mjlab/envs/mdp/rewards.py`,
+  },
+  {
+    id: "ee_speed_limit",
+    weight: -2.0,
+    on: true,
+    desc: "Hinge penalty once end-effector Cartesian speed exceeds max_speed (0.12 m/s) -- zero cost below the limit, squared cost above it.",
+    func: "ee_speed_limit_penalty",
+    params: `{"asset_cfg": ee_cfg, "max_speed": 0.12}`,
+    src: `def ee_speed_limit_penalty(
+    env, asset_cfg: SceneEntityCfg, max_speed: float = 0.12
+) -> torch.Tensor:
+    """
+    Penalizes end-effector linear speed only when it exceeds max_speed
+    (m/s) -- a hinge, not a flat L2 term, since we want to freely allow
+    any speed up to the limit and only discourage exceeding it, not
+    encourage the arm to move as slowly as possible in general.
+    Squared excess (not linear) so larger violations are penalized
+    disproportionately more, encouraging margin under the limit rather
+    than just barely staying under it.
+
+    Returns a NON-NEGATIVE cost (matching collision_cost/joint_vel_l2/
+    action_rate_l2's convention) -- pair with a NEGATIVE weight in
+    RewardTermCfg.
+    """
+    asset = env.scene[asset_cfg.name]
+    ee_vel_w = asset.data.site_lin_vel_w[:, asset_cfg.site_ids].squeeze(1)
+    speed = torch.norm(ee_vel_w, dim=-1)
+    excess = torch.clamp(speed - max_speed, min=0.0)
+    return torch.square(excess)`,
+  },
+  {
+    id: "joint_vel_limit",
+    weight: -1.5,
+    on: true,
+    desc: "Per-joint hinge penalty above 25% of the real UR3e's rated joint velocity -- respects that wrists have 2x the velocity budget of shoulder/lift/elbow.",
+    func: "joint_vel_limit_penalty",
+    params: `{"asset_cfg": arm_cfg, "limits": _JOINT_VEL_TARGET_LIMITS}`,
+    src: `# Mirrors REAL_JOINT_VEL_LIMITS / SAFETY_FACTOR from the deployment script.
+_JOINT_VEL_LIMITS_RAD_S = (3.14159, 3.14159, 3.14159, 6.28319, 6.28319, 6.28319)
+_VEL_SAFETY_FACTOR = 0.25
+_JOINT_VEL_TARGET_LIMITS = tuple(v * _VEL_SAFETY_FACTOR for v in _JOINT_VEL_LIMITS_RAD_S)
+
+
+def joint_vel_limit_penalty(
+    env, asset_cfg: SceneEntityCfg, limits: tuple
+) -> torch.Tensor:
+    """
+    Hinge penalty per joint: zero cost below \`limits[i]\` (rad/s), quadratic
+    cost above it. Unlike joint_vel_l2, this is per-joint (respecting that
+    wrists have 2x the velocity budget of shoulder/lift/elbow) and doesn't
+    compete with reach_distance/success_bonus below the threshold, so it
+    shouldn't fight reaching speed the way a flat L2 does.
+    """
+    arm = env.scene[asset_cfg.name]
+    joint_vel = arm.data.joint_vel[:, asset_cfg.joint_ids]  # [B, 6]
+    limits_t = torch.tensor(limits, device=joint_vel.device, dtype=joint_vel.dtype)
+    excess = torch.clamp(torch.abs(joint_vel) - limits_t, min=0.0)
+    return torch.sum(torch.square(excess), dim=-1)`,
+  },
+  {
+    id: "joint_vel",
+    weight: -0.001,
+    on: true,
+    desc: "Built-in mjlab term; small general smoothness regularizer on joint velocity (all joints, all the time) -- distinct from the hinge-style joint_vel_limit above.",
+    func: "mdp_rewards.joint_vel_l2",
+    params: `{"asset_cfg": arm_cfg}`,
+    builtin: true,
+    src: `# Built into mjlab -- not duplicated here since it ships with the package.
+# See mjlab.envs.mdp.rewards.joint_vel_l2 in
+# .venv/lib/python3.14/site-packages/mjlab/envs/mdp/rewards.py`,
+  },
+  {
+    id: "self_collision",
+    weight: -1.0,
+    on: true,
+    requiresCollision: true,
+    desc: "Penalizes self-collision contact force above 10N via a dedicated ContactSensor. Requires enable_collision_penalty=True.",
+    func: "collision_cost",
+    params: `{"sensor_name": "self_collision", "force_threshold": 10.0}`,
+    src: `def collision_cost(
+    env, sensor_name: str, force_threshold: float = 10.0
+) -> torch.Tensor:
+    """
+    Penalize contacts on the given ContactSensor. Adapted directly from
+    mjlab's own self_collision_cost (tasks/velocity/mdp/rewards.py).
+
+    When the sensor has force_history (history_length > 0), counts substeps
+    where any contact force exceeds force_threshold -- catches brief
+    contacts that resolve mid-step. Falls back to the instantaneous found
+    count if no history is available.
+    """
+    sensor: ContactSensor = env.scene[sensor_name]
+    data = sensor.data
+    if data.force_history is not None:
+        force_mag = torch.norm(data.force_history, dim=-1)  # [B, N, H]
+        hit = (force_mag > force_threshold).any(dim=1)  # [B, H]
+        return hit.sum(dim=-1).float()
+    assert data.found is not None
+    return data.found.sum(dim=-1).float()`,
+  },
+  {
+    id: "table_collision",
+    weight: -1.0,
+    on: true,
+    requiresCollision: true,
+    desc: "Penalizes arm-vs-table collision force above 10N, same underlying collision_cost function as self_collision. Requires enable_collision_penalty=True.",
+    func: "collision_cost",
+    params: `{"sensor_name": "table_collision", "force_threshold": 10.0}`,
+    src: `# Same function as self_collision above -- see its Python (select it on
+# the left) for the full collision_cost() source. Only sensor_name differs.`,
+  },
+];
+
+let selectedRewardId = null;
+
+// ---------------------------------------------------------------------------
+// Build reward list (left column: name + weight, click to select)
+// ---------------------------------------------------------------------------
+const rewardRows = document.getElementById("reward-rows");
+REWARDS.forEach((r) => {
+  const row = document.createElement("div");
+  row.className = "reward-row";
+  row.id = "row-" + r.id;
+  row.dataset.id = r.id;
+
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.id = "on-" + r.id;
+  cb.checked = r.on;
+  cb.addEventListener("change", (e) => { e.stopPropagation(); render(); });
+
+  const name = document.createElement("span");
+  name.className = "name";
+  name.textContent = r.id;
+
+  const weight = document.createElement("input");
+  weight.type = "number";
+  weight.step = "0.01";
+  weight.id = "w-" + r.id;
+  weight.value = r.weight;
+  weight.setAttribute("data-tip", "weight for this reward term");
+  weight.addEventListener("input", (e) => { e.stopPropagation(); render(); });
+  weight.addEventListener("click", (e) => e.stopPropagation());
+
+  row.appendChild(cb);
+  row.appendChild(name);
+  row.appendChild(weight);
+  row.addEventListener("click", () => selectReward(r.id));
+
+  rewardRows.appendChild(row);
+});
+
+function selectReward(id) {
+  selectedRewardId = id;
+  const r = REWARDS.find((x) => x.id === id);
+
+  document.querySelectorAll(".reward-row").forEach((row) => {
+    row.classList.toggle("selected", row.dataset.id === id);
+  });
+
+  document.getElementById("detail-empty").style.display = "none";
+  document.getElementById("detail-content").style.display = "block";
+  document.getElementById("detail-title").textContent = r.id;
+  document.getElementById("detail-desc").textContent = r.desc
+    + (r.builtin ? "  (built into mjlab, not defined in this file.)" : "");
+  document.getElementById("detail-code").textContent =
+    (r.id === "reach_distance" ? EE_TO_TARGET_SRC + "\n\n\n" : "") + r.src;
+}
+
+function toggleCollisionRewards() {
+  const on = document.getElementById("enable_collision_penalty").checked;
+  REWARDS.filter((r) => r.requiresCollision).forEach((r) => {
+    const cb = document.getElementById("on-" + r.id);
+    const row = document.getElementById("row-" + r.id);
+    cb.disabled = !on;
+    row.classList.toggle("disabled", !on);
+    if (!on) cb.checked = false;
+  });
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Modal handling
+// ---------------------------------------------------------------------------
+function openModal(name) {
+  document.querySelectorAll(".modal").forEach((m) => m.classList.remove("active"));
+  document.getElementById("modal-" + name).classList.add("active");
+  document.getElementById("overlay").classList.add("active");
+  if (name === "files") renderFilesModal();
+}
+function closeModal() {
+  document.getElementById("overlay").classList.remove("active");
+  document.querySelectorAll(".modal").forEach((m) => m.classList.remove("active"));
+}
+function closeModalOnOverlay(e) {
+  if (e.target.id === "overlay") closeModal();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});
+
+// ---------------------------------------------------------------------------
+// Value getters
+// ---------------------------------------------------------------------------
+function v(id) { return document.getElementById(id).value; }
+function num(id) { return parseFloat(document.getElementById(id).value); }
+function int(id) { return parseInt(document.getElementById(id).value, 10); }
+function bool(id) { return document.getElementById(id).checked; }
+function py(b) { return b ? "True" : "False"; }
+
+function getSelectedRewards() {
+  return REWARDS.filter((r) => document.getElementById("on-" + r.id).checked);
+}
+
+// Formats one RewardTermCfg dict entry at the given base indent (spaces).
+// baseIndent=4 -> top-level `cfg.rewards = {...}`; baseIndent=8 -> nested one
+// level deeper inside a function body (see buildStandaloneFiles below).
+function formatRewardEntry(r, baseIndent) {
+  const b = " ".repeat(baseIndent);
+  const b2 = " ".repeat(baseIndent + 4);
+  const w = document.getElementById("w-" + r.id).value;
+  const paramsFormatted = r.params
+    .split("\n")
+    .map((l, i) => (i === 0 ? l : b2 + l))
+    .join("\n");
+  return `${b}"${r.id}": RewardTermCfg(
+${b2}func=${r.func},
+${b2}weight=${w},
+${b2}params=${paramsFormatted},
+${b}),`;
+}
+
+function render() {
+  // --- 1. Env / physics config -------------------------------------------------
+  const envSrc = `from ur3e.ur3e_reach_env_cfg import get_ur3e_reach_env_cfg
+
+cfg = get_ur3e_reach_env_cfg(
+    enable_collision_penalty=${py(bool("enable_collision_penalty"))},
+    use_velocity_clamp=${py(bool("use_velocity_clamp"))},
+)
+
+# Overrides -- these fields are set inside get_ur3e_reach_env_cfg() by
+# default; assign after the fact to change them without editing the file.
+cfg.sim.mujoco.timestep = ${num("timestep")}
+cfg.sim.mujoco.integrator = "${v("integrator")}"
+cfg.decimation = ${int("decimation")}
+cfg.episode_length_s = ${num("episode_length_s")}
+cfg.scene.num_envs = ${int("num_envs")}
+cfg.scene.env_spacing = ${num("env_spacing")}
+cfg.actions["arm_joints"].scale = ${num("action_scale")}`;
+  document.getElementById("out-env").textContent = envSrc;
+
+  // --- 2. Reward terms ----------------------------------------------------------
+  const selected = getSelectedRewards();
+  let rewardsSrc;
+  if (selected.length === 0) {
+    rewardsSrc = "# no reward terms selected -- the episode would have zero reward signal";
+  } else {
+    const entries = selected.map((r) => formatRewardEntry(r, 4)).join("\n");
+    rewardsSrc = `cfg.rewards = {
+${entries}
+}`;
+  }
+  document.getElementById("out-rewards").textContent = rewardsSrc;
+
+  // --- 3. Training / PPO config ---------------------------------------------------
+  const h = int("hidden_width");
+  const rlSrc = `from mjlab.rl import RslRlModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
+
+rl_cfg = RslRlOnPolicyRunnerCfg(
+    actor=RslRlModelCfg(
+        hidden_dims=(${h}, ${h}),
+        activation="${v("activation")}",
+        obs_normalization=${py(bool("obs_normalization"))},
+        distribution_cfg={
+            "class_name": "GaussianDistribution",
+            "init_std": ${num("init_std")},
+            "std_type": "scalar",
+        },
+    ),
+    critic=RslRlModelCfg(
+        hidden_dims=(${h}, ${h}),
+        activation="${v("activation")}",
+        obs_normalization=${py(bool("obs_normalization"))},
+    ),
+    algorithm=RslRlPpoAlgorithmCfg(
+        value_loss_coef=${num("value_loss_coef")},
+        use_clipped_value_loss=${py(bool("use_clipped_value_loss"))},
+        clip_param=${num("clip_param")},
+        entropy_coef=${num("entropy_coef")},
+        num_learning_epochs=${int("num_learning_epochs")},
+        num_mini_batches=${int("num_mini_batches")},
+        learning_rate=${num("learning_rate")},
+        schedule="${v("schedule")}",
+        gamma=${num("gamma")},
+        lam=${num("lam")},
+        desired_kl=${num("desired_kl")},
+        max_grad_norm=${num("max_grad_norm")},
+    ),
+    experiment_name="${v("experiment_name")}",
+    save_interval=${int("save_interval")},
+    num_steps_per_env=${int("num_steps_per_env")},
+    max_iterations=${int("max_iterations")},
+)`;
+  document.getElementById("out-rl").textContent = rlSrc;
+}
+
+function copyBlock(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text);
+}
+
+function resetDefaults() {
+  location.reload();
+}
+
+// ---------------------------------------------------------------------------
+// "Generate Config/Command Files" -- bundles current settings + selected
+// reward terms into a standalone task-registration script (no need to edit
+// ur3e_reach_env_cfg.py / __init__.py by hand) plus a matching shell command
+// file, and lets the user download both.
+// ---------------------------------------------------------------------------
+function buildStandaloneFiles() {
+  const selected = getSelectedRewards();
+  const rewardsBlock =
+    selected.length === 0
+      ? "    cfg.rewards = {}"
+      : `    cfg.rewards = {
+${selected.map((r) => formatRewardEntry(r, 8)).join("\n")}
+    }`;
+  const h = int("hidden_width");
+
+  const pyContent = `"""
+Auto-generated by the UR3e Reach Config Builder (config_builder/index.html).
+Registers a standalone "Mjlab-UR3e-Reach-Custom" task with the settings
+chosen in the tool -- doesn't touch ur3e_reach_env_cfg.py or __init__.py.
+
+WHERE THIS GOES:
+  Save as custom_ur3e_task.py next to ur3e_reach_env_cfg.py:
+    - my_mjlab_project/src/my_mjlab_project/tasks/ur3e_reach/  (for real training)
+    - Simulations/ur3e/                                        (to test in the notebook)
+
+HOW TO USE IT:
+  1. Make it register on import -- either add
+       from . import custom_ur3e_task  # noqa: F401
+     to that package's __init__.py, or just \`import custom_ur3e_task\` in a
+     notebook/script.
+  2. Train/play against task_id="Mjlab-UR3e-Reach-Custom" -- see the
+     accompanying train_custom.sh for the exact commands.
+"""
+
+from ur3e.ur3e_reach_env_cfg import (
+    get_ur3e_reach_env_cfg,
+    ee_cfg,
+    arm_cfg,
+    _JOINT_VEL_TARGET_LIMITS,
+    reach_distance_reward,
+    success_bonus,
+    settle_penalty,
+    ee_speed_limit_penalty,
+    joint_vel_limit_penalty,
+    collision_cost,
+)
+from mjlab.envs.mdp import rewards as mdp_rewards
+from mjlab.managers import RewardTermCfg
+from mjlab.rl import RslRlModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
+from mjlab.tasks.registry import register_mjlab_task
+
+
+def _build_cfg(play: bool = False):
+    cfg = get_ur3e_reach_env_cfg(
+        play=play,
+        enable_collision_penalty=${py(bool("enable_collision_penalty"))},
+        use_velocity_clamp=${py(bool("use_velocity_clamp"))},
+    )
+    cfg.sim.mujoco.timestep = ${num("timestep")}
+    cfg.sim.mujoco.integrator = "${v("integrator")}"
+    cfg.decimation = ${int("decimation")}
+    cfg.episode_length_s = ${num("episode_length_s")}
+    if not play:
+        cfg.scene.num_envs = ${int("num_envs")}
+    cfg.scene.env_spacing = ${num("env_spacing")}
+    cfg.actions["arm_joints"].scale = ${num("action_scale")}
+
+${rewardsBlock}
+    return cfg
+
+
+def ur3e_reach_custom_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+    return RslRlOnPolicyRunnerCfg(
+        actor=RslRlModelCfg(
+            hidden_dims=(${h}, ${h}),
+            activation="${v("activation")}",
+            obs_normalization=${py(bool("obs_normalization"))},
+            distribution_cfg={
+                "class_name": "GaussianDistribution",
+                "init_std": ${num("init_std")},
+                "std_type": "scalar",
+            },
+        ),
+        critic=RslRlModelCfg(
+            hidden_dims=(${h}, ${h}),
+            activation="${v("activation")}",
+            obs_normalization=${py(bool("obs_normalization"))},
+        ),
+        algorithm=RslRlPpoAlgorithmCfg(
+            value_loss_coef=${num("value_loss_coef")},
+            use_clipped_value_loss=${py(bool("use_clipped_value_loss"))},
+            clip_param=${num("clip_param")},
+            entropy_coef=${num("entropy_coef")},
+            num_learning_epochs=${int("num_learning_epochs")},
+            num_mini_batches=${int("num_mini_batches")},
+            learning_rate=${num("learning_rate")},
+            schedule="${v("schedule")}",
+            gamma=${num("gamma")},
+            lam=${num("lam")},
+            desired_kl=${num("desired_kl")},
+            max_grad_norm=${num("max_grad_norm")},
+        ),
+        experiment_name="${v("experiment_name")}",
+        save_interval=${int("save_interval")},
+        num_steps_per_env=${int("num_steps_per_env")},
+        max_iterations=${int("max_iterations")},
+    )
+
+
+register_mjlab_task(
+    task_id="Mjlab-UR3e-Reach-Custom",
+    env_cfg=_build_cfg(play=False),
+    play_env_cfg=_build_cfg(play=True),
+    rl_cfg=ur3e_reach_custom_ppo_runner_cfg(),
+)
+`;
+
+  const shContent = `#!/usr/bin/env bash
+# Auto-generated by the UR3e Reach Config Builder.
+# Save as train_custom.sh and run: bash train_custom.sh
+# (edit the cd path below if my_mjlab_project lives somewhere else)
+
+cd ~/Desktop/Summer26/MuJoCo/hackathon/my_mjlab_project
+
+# headless training
+uv run train --task Mjlab-UR3e-Reach-Custom
+
+# watch a trained checkpoint instead (uncomment):
+# uv run play --task Mjlab-UR3e-Reach-Custom --agent trained
+`;
+
+  return { pyContent, shContent };
+}
+
+function renderFilesModal() {
+  const { pyContent, shContent } = buildStandaloneFiles();
+  document.getElementById("out-py-file").textContent = pyContent;
+  document.getElementById("out-sh-file").textContent = shContent;
+}
+
+function downloadText(filename, content) {
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function downloadPyFile() {
+  downloadText("custom_ur3e_task.py", document.getElementById("out-py-file").textContent);
+}
+function downloadShFile() {
+  downloadText("train_custom.sh", document.getElementById("out-sh-file").textContent);
+}
+
+// wire up all settings inputs (inside the Settings modal) to re-render on change
+document.querySelectorAll("#modal-settings input, #modal-settings select").forEach((el) => {
+  el.addEventListener("input", render);
+  el.addEventListener("change", render);
+});
+
+// ---------------------------------------------------------------------------
+// Custom tooltips (data-tip="..."). Rendered as a single floating box
+// positioned with the mouse, appended directly to <body> so it can never be
+// clipped by a scrollable ancestor (e.g. the Settings modal).
+// ---------------------------------------------------------------------------
+const tooltipBox = document.createElement("div");
+tooltipBox.className = "tooltip-box";
+document.body.appendChild(tooltipBox);
+
+function showTooltip(e) {
+  const text = e.currentTarget.getAttribute("data-tip");
+  if (!text) return;
+  tooltipBox.textContent = text;
+  tooltipBox.classList.add("visible");
+  positionTooltip(e);
+}
+function positionTooltip(e) {
+  const pad = 16;
+  const rect = tooltipBox.getBoundingClientRect();
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+  tooltipBox.style.left = Math.max(4, x) + "px";
+  tooltipBox.style.top = Math.max(4, y) + "px";
+}
+function hideTooltip() {
+  tooltipBox.classList.remove("visible");
+}
+function attachTooltips(root) {
+  root.querySelectorAll("[data-tip]").forEach((el) => {
+    if (el.dataset.tipBound) return;
+    el.dataset.tipBound = "1";
+    el.addEventListener("mouseenter", showTooltip);
+    el.addEventListener("mousemove", positionTooltip);
+    el.addEventListener("mouseleave", hideTooltip);
+  });
+}
+attachTooltips(document);
+
+render();
+selectReward("reach_distance");
+</script>
+
+</body>
+</html>

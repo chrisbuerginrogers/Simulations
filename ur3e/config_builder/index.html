@@ -443,35 +443,34 @@
       placement notes below each one.
     </p>
 
-    <div class="two-col">
-      <div>
-        <div class="code-title-row">
-          <strong>custom_ur3e_task.py</strong>
-          <button onclick="downloadPyFile()">Download</button>
-        </div>
-        <p class="note">
-          Save next to <code>ur3e_reach_env_cfg.py</code> -- either
-          <code>my_mjlab_project/src/my_mjlab_project/tasks/ur3e_reach/</code>
-          (for real training) or <code>Simulations/ur3e/</code> (to test in the notebook).
-          Then register it on import: add
-          <code>from . import custom_ur3e_task  # noqa: F401</code> to that package's
-          <code>__init__.py</code>, or just <code>import custom_ur3e_task</code> in a
-          notebook/script.
-        </p>
-        <pre><code id="out-py-file"></code></pre>
+    <div>
+      <div class="code-title-row">
+        <strong>train_custom.sh</strong>
+        <button onclick="downloadShFile()">Download</button>
       </div>
-      <div>
-        <div class="code-title-row">
-          <strong>train_custom.sh</strong>
-          <button onclick="downloadShFile()">Download</button>
-        </div>
-        <p class="note">
-          Save anywhere convenient and run with <code>bash train_custom.sh</code>. Edit the
-          <code>cd</code> line first if <code>my_mjlab_project</code> isn't at the path assumed
-          below.
-        </p>
-        <pre><code id="out-sh-file"></code></pre>
+      <p class="note">
+        Save anywhere convenient and run with <code>bash train_custom.sh</code>. Edit the
+        <code>cd</code> line first if <code>my_mjlab_project</code> isn't at the path assumed
+        below.
+      </p>
+      <pre><code id="out-sh-file"></code></pre>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="code-title-row">
+        <strong>custom_ur3e_task.py</strong>
+        <button onclick="downloadPyFile()">Download</button>
       </div>
+      <p class="note">
+        Save next to <code>ur3e_reach_env_cfg.py</code> -- either
+        <code>my_mjlab_project/src/my_mjlab_project/tasks/ur3e_reach/</code>
+        (for real training) or <code>Simulations/ur3e/</code> (to test in the notebook).
+        Then register it on import: add
+        <code>from . import custom_ur3e_task  # noqa: F401</code> to that package's
+        <code>__init__.py</code>, or just <code>import custom_ur3e_task</code> in a
+        notebook/script.
+      </p>
+      <pre><code id="out-py-file"></code></pre>
     </div>
   </div>
 </div>

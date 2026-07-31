@@ -41,23 +41,32 @@
   header h1 { margin: 0 0 4px; font-size: 1.4rem; }
   header p { margin: 0; color: var(--muted); font-size: 0.92rem; }
 
-  .toolbar {
+  /* --- tabs --------------------------------------------------------------- */
+  .tabs {
     display: flex;
-    gap: 10px;
-    padding: 0 28px 16px;
-    flex-wrap: wrap;
+    gap: 4px;
+    padding: 14px 28px 0;
+    border-bottom: 1px solid var(--border);
   }
-  .toolbar button {
-    font-size: 0.85rem;
-    padding: 7px 14px;
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 9px 16px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--muted);
   }
-  .toolbar button.gear { font-weight: 600; }
+  .tab-btn:hover { color: var(--text); border-bottom-color: var(--border); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  .tab-content { padding: 20px 28px 32px; }
 
   .main {
     display: grid;
     grid-template-columns: minmax(260px, 340px) 1fr;
     gap: 18px;
-    padding: 0 28px 32px;
     align-items: start;
   }
   @media (max-width: 800px) {
@@ -70,7 +79,7 @@
     border-radius: 10px;
     padding: 16px 18px;
   }
-  .reward-list { max-height: calc(100vh - 220px); overflow-y: auto; position: sticky; top: 16px; }
+  .reward-list { max-height: calc(100vh - 260px); overflow-y: auto; position: sticky; top: 16px; }
   .reward-detail { min-height: 300px; }
 
   h2 {
@@ -171,56 +180,26 @@
     align-items: center;
     margin-bottom: 2px;
   }
-  .code-title-row strong { font-size: 0.88rem; }
+  .code-title-row strong,
+  .code-title-row span { font-size: 0.88rem; }
+  .panel + .panel { margin-top: 16px; }
 
-  /* --- modal / overlay -------------------------------------------------- */
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    display: none;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 40px 20px;
-    z-index: 50;
-    overflow-y: auto;
-  }
-  .overlay.active { display: flex; }
-  .modal {
-    display: none;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    max-width: 680px;
-    width: 100%;
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: 18px 22px 22px;
-  }
-  .modal.active { display: block; }
-  .modal-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 10px;
-  }
-  .modal-head span { font-size: 1.05rem; font-weight: 600; }
-  .modal-head .modal-actions { display: flex; gap: 8px; align-items: center; }
-  .modal-head button.close { font-size: 1rem; padding: 2px 9px; }
-  section { margin-bottom: 18px; }
-  section:last-child { margin-bottom: 0; }
-
-  .modal.wide { max-width: 960px; }
-  .modal-body-cols {
+  .two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px 28px;
   }
   @media (max-width: 720px) {
-    .modal-body-cols { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
   }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .panel-head h2 { border: none; padding: 0; margin: 0; }
 
   /* --- custom tooltip (native title= is unreliable inside some embedded
      webviews, e.g. VS Code's Simple Browser, so we render our own) -------- */
@@ -245,236 +224,221 @@
 
 <header>
   <h1>UR3e Reach — Config Builder</h1>
-  <p>Pick a reward term on the left to see its definition and Python source on the right. Use the buttons
-     below for physics/training settings and the generated config code.</p>
+  <p>Use the tabs below: adjust physics/training settings, pick reward terms and inspect their code, or
+     view and download the generated config/command files.</p>
 </header>
 
-<div class="toolbar">
-  <button class="gear" onclick="openModal('settings')">⚙ Settings</button>
-  <button onclick="openModal('env')">Env / Physics Config Code</button>
-  <button onclick="openModal('rewards')">Reward Terms Code</button>
-  <button onclick="openModal('training')">Training / PPO Config Code</button>
-  <button onclick="openModal('files')">Generate Config/Command Files</button>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+  <button class="tab-btn" data-tab="rewards" onclick="switchTab('rewards')">Rewards</button>
+  <button class="tab-btn" data-tab="code" onclick="switchTab('code')">Code Snippets</button>
 </div>
 
-<div class="main">
+<!-- ============================== Settings tab ============================== -->
+<div class="tab-content" id="tab-settings">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Settings</h2>
+      <button onclick="resetDefaults()">Reset to defaults</button>
+    </div>
 
-  <div class="panel reward-list">
-    <h2>Reward terms</h2>
-    <div id="reward-rows"><!-- rows injected by JS --></div>
-  </div>
+    <div class="two-col">
+      <section>
+        <h2 style="border:none; padding:0;">Physics / Episode</h2>
+        <div class="field">
+          <label data-tip="Physics integration step, in seconds. Smaller = more accurate, more compute.">timestep</label>
+          <input type="number" id="timestep" value="0.01" step="0.001" min="0.0001">
+        </div>
+        <div class="field">
+          <label data-tip="MuJoCo integrator used for physics stepping. This repo's default is implicitfast.">integrator</label>
+          <select id="integrator">
+            <option>implicitfast</option>
+            <option>Euler</option>
+            <option>RK4</option>
+            <option>implicit</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-tip="Physics steps per policy step. decimation * timestep = seconds of sim time per policy step.">decimation</label>
+          <input type="number" id="decimation" value="10" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Episode length before time-out truncation, in seconds.">episode_length_s</label>
+          <input type="number" id="episode_length_s" value="22.0" step="0.5" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Number of parallel environments simulated together. Bigger = more GPU throughput needed, bigger PPO batch per rollout.">num_envs</label>
+          <input type="number" id="num_envs" value="512" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Distance between parallel envs in the viewer. Visual only, doesn't affect physics.">env_spacing</label>
+          <input type="number" id="env_spacing" value="2.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Max joint-angle delta (radians) applied per policy step for the 6D relative action.">action scale</label>
+          <input type="number" id="action_scale" value="0.08" step="0.01" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Whether self/table collision sensors + reward terms are attached at all. Turning this off also disables the self_collision/table_collision reward terms.">enable_collision_penalty</label>
+          <input type="checkbox" id="enable_collision_penalty" checked onchange="toggleCollisionRewards()">
+        </div>
+        <div class="field">
+          <label data-tip="Swaps in a velocity-clamped action variant, for visual validation only — not what a real checkpoint is trained against.">use_velocity_clamp</label>
+          <input type="checkbox" id="use_velocity_clamp">
+        </div>
+      </section>
 
-  <div class="panel reward-detail">
-    <div id="detail-empty" class="detail-placeholder">Select a reward term on the left to see its definition and code.</div>
-    <div id="detail-content" style="display:none">
-      <h2 id="detail-title" style="border:none; padding:0; margin-bottom:2px;"></h2>
-      <p id="detail-desc"></p>
-      <pre><code id="detail-code"></code></pre>
+      <section>
+        <h2 style="border:none; padding:0;">Training (PPO / RSL-RL)</h2>
+        <div class="field">
+          <label data-tip="Checkpoint/log folder name under logs/rsl_rl/.">experiment_name</label>
+          <input type="text" id="experiment_name" value="ur3e_reach">
+        </div>
+        <div class="field">
+          <label data-tip="Training loop length, in PPO update iterations.">max_iterations</label>
+          <input type="number" id="max_iterations" value="2000" step="50" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Checkpoint save frequency, in iterations.">save_interval</label>
+          <input type="number" id="save_interval" value="50" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Rollout length per env before each PPO update. num_envs * num_steps_per_env = transitions per update.">num_steps_per_env</label>
+          <input type="number" id="num_steps_per_env" value="24" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Width of each hidden layer in the actor/critic MLP (Multi-Layer Perceptron). This task uses two layers, deliberately small since observations are only 18-dim.">hidden layer width</label>
+          <input type="number" id="hidden_width" value="128" step="8" min="8">
+        </div>
+        <div class="field">
+          <label data-tip="Activation function between hidden layers. ELU avoids the 'dead neuron' problem ReLU can have for negative inputs.">activation</label>
+          <select id="activation">
+            <option>elu</option>
+            <option>relu</option>
+            <option>tanh</option>
+            <option>selu</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-tip="Running mean/std normalization applied to observations before they hit the network.">obs_normalization</label>
+          <input type="checkbox" id="obs_normalization" checked>
+        </div>
+        <div class="field">
+          <label data-tip="Initial standard deviation of the Gaussian action distribution the policy samples from.">init_std</label>
+          <input type="number" id="init_std" value="1.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="PPO's policy-update clipping threshold — caps how far one update can move the policy.">clip_param</label>
+          <input type="number" id="clip_param" value="0.2" step="0.01" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Exploration bonus weight. Raised in this repo from 0.005 to slow a std collapse into a self-colliding local optimum.">entropy_coef</label>
+          <input type="number" id="entropy_coef" value="0.02" step="0.001" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Weight on the critic (value network) loss term.">value_loss_coef</label>
+          <input type="number" id="value_loss_coef" value="1.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Clips the critic loss the same way PPO clips the policy loss.">use_clipped_value_loss</label>
+          <input type="checkbox" id="use_clipped_value_loss" checked>
+        </div>
+        <div class="field">
+          <label data-tip="Passes over each rollout batch per PPO update.">num_learning_epochs</label>
+          <input type="number" id="num_learning_epochs" value="5" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Mini-batches per epoch.">num_mini_batches</label>
+          <input type="number" id="num_mini_batches" value="4" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Initial optimizer learning rate.">learning_rate</label>
+          <input type="number" id="learning_rate" value="0.001" step="0.0001" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Learning-rate schedule. 'adaptive' adjusts based on KL divergence (see desired_kl).">schedule</label>
+          <select id="schedule">
+            <option>adaptive</option>
+            <option>fixed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-tip="Discount factor for future rewards.">gamma</label>
+          <input type="number" id="gamma" value="0.99" step="0.001" min="0" max="1">
+        </div>
+        <div class="field">
+          <label data-tip="GAE (Generalized Advantage Estimation) lambda.">lam</label>
+          <input type="number" id="lam" value="0.95" step="0.001" min="0" max="1">
+        </div>
+        <div class="field">
+          <label data-tip="Target KL divergence for the adaptive learning-rate schedule.">desired_kl</label>
+          <input type="number" id="desired_kl" value="0.01" step="0.001" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Gradient clipping threshold (max global grad norm).">max_grad_norm</label>
+          <input type="number" id="max_grad_norm" value="1.0" step="0.1" min="0">
+        </div>
+      </section>
     </div>
   </div>
-
 </div>
 
-<!-- ============================== modals ============================== -->
-<div class="overlay" id="overlay" onclick="closeModalOnOverlay(event)">
-
-  <div class="modal wide" id="modal-settings">
-    <div class="modal-head">
-      <span>Settings</span>
-      <div class="modal-actions">
-        <button onclick="resetDefaults()">Reset</button>
-        <button class="close" onclick="closeModal()">✕</button>
-      </div>
+<!-- ============================== Rewards tab ============================== -->
+<div class="tab-content" id="tab-rewards" style="display:none">
+  <div class="main">
+    <div class="panel reward-list">
+      <h2>Reward terms</h2>
+      <div id="reward-rows"><!-- rows injected by JS --></div>
     </div>
 
-    <div class="modal-body-cols">
-    <section>
-      <h2 style="border:none; padding:0;">Physics / Episode</h2>
-      <div class="field">
-        <label data-tip="Physics integration step, in seconds. Smaller = more accurate, more compute.">timestep</label>
-        <input type="number" id="timestep" value="0.01" step="0.001" min="0.0001">
+    <div class="panel reward-detail">
+      <div id="detail-empty" class="detail-placeholder">Select a reward term on the left to see its definition and code.</div>
+      <div id="detail-content" style="display:none">
+        <h2 id="detail-title" style="border:none; padding:0; margin-bottom:2px;"></h2>
+        <p id="detail-desc"></p>
+        <pre><code id="detail-code"></code></pre>
       </div>
-      <div class="field">
-        <label data-tip="MuJoCo integrator used for physics stepping. This repo's default is implicitfast.">integrator</label>
-        <select id="integrator">
-          <option>implicitfast</option>
-          <option>Euler</option>
-          <option>RK4</option>
-          <option>implicit</option>
-        </select>
-      </div>
-      <div class="field">
-        <label data-tip="Physics steps per policy step. decimation * timestep = seconds of sim time per policy step.">decimation</label>
-        <input type="number" id="decimation" value="10" step="1" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Episode length before time-out truncation, in seconds.">episode_length_s</label>
-        <input type="number" id="episode_length_s" value="22.0" step="0.5" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Number of parallel environments simulated together. Bigger = more GPU throughput needed, bigger PPO batch per rollout.">num_envs</label>
-        <input type="number" id="num_envs" value="512" step="1" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Distance between parallel envs in the viewer. Visual only, doesn't affect physics.">env_spacing</label>
-        <input type="number" id="env_spacing" value="2.0" step="0.1" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Max joint-angle delta (radians) applied per policy step for the 6D relative action.">action scale</label>
-        <input type="number" id="action_scale" value="0.08" step="0.01" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Whether self/table collision sensors + reward terms are attached at all. Turning this off also disables the self_collision/table_collision reward terms.">enable_collision_penalty</label>
-        <input type="checkbox" id="enable_collision_penalty" checked onchange="toggleCollisionRewards()">
-      </div>
-      <div class="field">
-        <label data-tip="Swaps in a velocity-clamped action variant, for visual validation only — not what a real checkpoint is trained against.">use_velocity_clamp</label>
-        <input type="checkbox" id="use_velocity_clamp">
-      </div>
-    </section>
-
-    <section>
-      <h2 style="border:none; padding:0;">Training (PPO / RSL-RL)</h2>
-      <div class="field">
-        <label data-tip="Checkpoint/log folder name under logs/rsl_rl/.">experiment_name</label>
-        <input type="text" id="experiment_name" value="ur3e_reach">
-      </div>
-      <div class="field">
-        <label data-tip="Training loop length, in PPO update iterations.">max_iterations</label>
-        <input type="number" id="max_iterations" value="2000" step="50" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Checkpoint save frequency, in iterations.">save_interval</label>
-        <input type="number" id="save_interval" value="50" step="1" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Rollout length per env before each PPO update. num_envs * num_steps_per_env = transitions per update.">num_steps_per_env</label>
-        <input type="number" id="num_steps_per_env" value="24" step="1" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Width of each hidden layer in the actor/critic MLP (Multi-Layer Perceptron). This task uses two layers, deliberately small since observations are only 18-dim.">hidden layer width</label>
-        <input type="number" id="hidden_width" value="128" step="8" min="8">
-      </div>
-      <div class="field">
-        <label data-tip="Activation function between hidden layers. ELU avoids the 'dead neuron' problem ReLU can have for negative inputs.">activation</label>
-        <select id="activation">
-          <option>elu</option>
-          <option>relu</option>
-          <option>tanh</option>
-          <option>selu</option>
-        </select>
-      </div>
-      <div class="field">
-        <label data-tip="Running mean/std normalization applied to observations before they hit the network.">obs_normalization</label>
-        <input type="checkbox" id="obs_normalization" checked>
-      </div>
-      <div class="field">
-        <label data-tip="Initial standard deviation of the Gaussian action distribution the policy samples from.">init_std</label>
-        <input type="number" id="init_std" value="1.0" step="0.1" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="PPO's policy-update clipping threshold — caps how far one update can move the policy.">clip_param</label>
-        <input type="number" id="clip_param" value="0.2" step="0.01" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Exploration bonus weight. Raised in this repo from 0.005 to slow a std collapse into a self-colliding local optimum.">entropy_coef</label>
-        <input type="number" id="entropy_coef" value="0.02" step="0.001" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Weight on the critic (value network) loss term.">value_loss_coef</label>
-        <input type="number" id="value_loss_coef" value="1.0" step="0.1" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Clips the critic loss the same way PPO clips the policy loss.">use_clipped_value_loss</label>
-        <input type="checkbox" id="use_clipped_value_loss" checked>
-      </div>
-      <div class="field">
-        <label data-tip="Passes over each rollout batch per PPO update.">num_learning_epochs</label>
-        <input type="number" id="num_learning_epochs" value="5" step="1" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Mini-batches per epoch.">num_mini_batches</label>
-        <input type="number" id="num_mini_batches" value="4" step="1" min="1">
-      </div>
-      <div class="field">
-        <label data-tip="Initial optimizer learning rate.">learning_rate</label>
-        <input type="number" id="learning_rate" value="0.001" step="0.0001" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Learning-rate schedule. 'adaptive' adjusts based on KL divergence (see desired_kl).">schedule</label>
-        <select id="schedule">
-          <option>adaptive</option>
-          <option>fixed</option>
-        </select>
-      </div>
-      <div class="field">
-        <label data-tip="Discount factor for future rewards.">gamma</label>
-        <input type="number" id="gamma" value="0.99" step="0.001" min="0" max="1">
-      </div>
-      <div class="field">
-        <label data-tip="GAE (Generalized Advantage Estimation) lambda.">lam</label>
-        <input type="number" id="lam" value="0.95" step="0.001" min="0" max="1">
-      </div>
-      <div class="field">
-        <label data-tip="Target KL divergence for the adaptive learning-rate schedule.">desired_kl</label>
-        <input type="number" id="desired_kl" value="0.01" step="0.001" min="0">
-      </div>
-      <div class="field">
-        <label data-tip="Gradient clipping threshold (max global grad norm).">max_grad_norm</label>
-        <input type="number" id="max_grad_norm" value="1.0" step="0.1" min="0">
-      </div>
-    </section>
     </div>
   </div>
+</div>
 
-  <div class="modal" id="modal-env">
-    <div class="modal-head">
+<!-- ============================== Code Snippets tab ============================== -->
+<div class="tab-content" id="tab-code" style="display:none">
+
+  <div class="panel">
+    <div class="code-title-row">
       <span>Env / Physics Config Code</span>
-      <div class="modal-actions">
-        <button onclick="copyBlock('out-env')">Copy</button>
-        <button class="close" onclick="closeModal()">✕</button>
-      </div>
+      <button onclick="copyBlock('out-env')">Copy</button>
     </div>
     <pre><code id="out-env"></code></pre>
   </div>
 
-  <div class="modal" id="modal-rewards">
-    <div class="modal-head">
+  <div class="panel">
+    <div class="code-title-row">
       <span>Reward Terms Code (<code>_build_rewards()</code>-style)</span>
-      <div class="modal-actions">
-        <button onclick="copyBlock('out-rewards')">Copy</button>
-        <button class="close" onclick="closeModal()">✕</button>
-      </div>
+      <button onclick="copyBlock('out-rewards')">Copy</button>
     </div>
     <pre><code id="out-rewards"></code></pre>
   </div>
 
-  <div class="modal" id="modal-training">
-    <div class="modal-head">
+  <div class="panel">
+    <div class="code-title-row">
       <span>Training / PPO Config Code</span>
-      <div class="modal-actions">
-        <button onclick="copyBlock('out-rl')">Copy</button>
-        <button class="close" onclick="closeModal()">✕</button>
-      </div>
+      <button onclick="copyBlock('out-rl')">Copy</button>
     </div>
     <pre><code id="out-rl"></code></pre>
   </div>
 
-  <div class="modal wide" id="modal-files">
-    <div class="modal-head">
-      <span>Generate Config / Command Files</span>
-      <div class="modal-actions">
-        <button class="close" onclick="closeModal()">✕</button>
-      </div>
-    </div>
-
-    <p class="note" style="font-size: 0.82rem; margin-bottom: 14px;">
+  <div class="panel">
+    <h2 style="border:none; padding:0;">Standalone task files</h2>
+    <p class="note">
       These two files register a standalone <code>Mjlab-UR3e-Reach-Custom</code> task with
       everything currently selected, so you don't have to hand-edit
-      <code>ur3e_reach_env_cfg.py</code> or <code>__init__.py</code>.
+      <code>ur3e_reach_env_cfg.py</code> or <code>__init__.py</code>. Download them and follow the
+      placement notes below each one.
     </p>
 
-    <div class="modal-body-cols">
+    <div class="two-col">
       <div>
         <div class="code-title-row">
           <strong>custom_ur3e_task.py</strong>
@@ -794,24 +758,13 @@ function toggleCollisionRewards() {
 }
 
 // ---------------------------------------------------------------------------
-// Modal handling
+// Tab handling
 // ---------------------------------------------------------------------------
-function openModal(name) {
-  document.querySelectorAll(".modal").forEach((m) => m.classList.remove("active"));
-  document.getElementById("modal-" + name).classList.add("active");
-  document.getElementById("overlay").classList.add("active");
-  if (name === "files") renderFilesModal();
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab-content").forEach((c) => { c.style.display = "none"; });
+  document.getElementById("tab-" + name).style.display = "block";
 }
-function closeModal() {
-  document.getElementById("overlay").classList.remove("active");
-  document.querySelectorAll(".modal").forEach((m) => m.classList.remove("active"));
-}
-function closeModalOnOverlay(e) {
-  if (e.target.id === "overlay") closeModal();
-}
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeModal();
-});
 
 // ---------------------------------------------------------------------------
 // Value getters
@@ -917,6 +870,11 @@ rl_cfg = RslRlOnPolicyRunnerCfg(
     max_iterations=${int("max_iterations")},
 )`;
   document.getElementById("out-rl").textContent = rlSrc;
+
+  // --- 4. Standalone task files ---------------------------------------------------
+  const { pyContent, shContent } = buildStandaloneFiles();
+  document.getElementById("out-py-file").textContent = pyContent;
+  document.getElementById("out-sh-file").textContent = shContent;
 }
 
 function copyBlock(id) {
@@ -929,10 +887,10 @@ function resetDefaults() {
 }
 
 // ---------------------------------------------------------------------------
-// "Generate Config/Command Files" -- bundles current settings + selected
-// reward terms into a standalone task-registration script (no need to edit
-// ur3e_reach_env_cfg.py / __init__.py by hand) plus a matching shell command
-// file, and lets the user download both.
+// Standalone task files -- bundles current settings + selected reward terms
+// into a task-registration script (no need to edit ur3e_reach_env_cfg.py /
+// __init__.py by hand) plus a matching shell command file, downloadable from
+// the Code Snippets tab.
 // ---------------------------------------------------------------------------
 function buildStandaloneFiles() {
   const selected = getSelectedRewards();
@@ -1063,12 +1021,6 @@ uv run train --task Mjlab-UR3e-Reach-Custom
   return { pyContent, shContent };
 }
 
-function renderFilesModal() {
-  const { pyContent, shContent } = buildStandaloneFiles();
-  document.getElementById("out-py-file").textContent = pyContent;
-  document.getElementById("out-sh-file").textContent = shContent;
-}
-
 function downloadText(filename, content) {
   const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
@@ -1087,8 +1039,8 @@ function downloadShFile() {
   downloadText("train_custom.sh", document.getElementById("out-sh-file").textContent);
 }
 
-// wire up all settings inputs (inside the Settings modal) to re-render on change
-document.querySelectorAll("#modal-settings input, #modal-settings select").forEach((el) => {
+// wire up all settings inputs to re-render on change
+document.querySelectorAll("#tab-settings input, #tab-settings select").forEach((el) => {
   el.addEventListener("input", render);
   el.addEventListener("change", render);
 });
@@ -1096,7 +1048,7 @@ document.querySelectorAll("#modal-settings input, #modal-settings select").forEa
 // ---------------------------------------------------------------------------
 // Custom tooltips (data-tip="..."). Rendered as a single floating box
 // positioned with the mouse, appended directly to <body> so it can never be
-// clipped by a scrollable ancestor (e.g. the Settings modal).
+// clipped by a scrollable ancestor.
 // ---------------------------------------------------------------------------
 const tooltipBox = document.createElement("div");
 tooltipBox.className = "tooltip-box";

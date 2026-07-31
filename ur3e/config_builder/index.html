@@ -232,6 +232,7 @@
   <button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')">Settings</button>
   <button class="tab-btn" data-tab="rewards" onclick="switchTab('rewards')">Rewards</button>
   <button class="tab-btn" data-tab="code" onclick="switchTab('code')">Code Snippets</button>
+  <button class="tab-btn" data-tab="files" onclick="switchTab('files')">Download Files</button>
 </div>
 
 <!-- ============================== Settings tab ============================== -->
@@ -429,6 +430,10 @@
     <pre><code id="out-rl"></code></pre>
   </div>
 
+</div>
+
+<!-- ============================== Download Files tab ============================== -->
+<div class="tab-content" id="tab-files" style="display:none">
   <div class="panel">
     <h2 style="border:none; padding:0;">Standalone task files</h2>
     <p class="note">
@@ -469,7 +474,6 @@
       </div>
     </div>
   </div>
-
 </div>
 
 <script>

@@ -1,0 +1,1643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generic mjlab Task Config Builder</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --border: #d8d8dc;
+    --text: #1c1c1e;
+    --muted: #6b6b70;
+    --accent: #2f6feb;
+    --code-bg: #0d1117;
+    --code-text: #c9d1d9;
+    --selected: #e8f0fe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a;
+      --panel: #202124;
+      --border: #38393d;
+      --text: #eaeaea;
+      --muted: #9a9a9e;
+      --code-bg: #0d1117;
+      --code-text: #c9d1d9;
+      --selected: #253449;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header { padding: 20px 28px 10px; }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  header p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 14px 28px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 9px 16px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .tab-btn:hover { color: var(--text); border-bottom-color: var(--border); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  .tab-content { padding: 20px 28px 32px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .panel + .panel { margin-top: 16px; }
+
+  h2 {
+    font-size: 1rem;
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  h3 { font-size: 0.92rem; margin: 14px 0 4px; }
+
+  .field {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+  }
+  .field label {
+    font-size: 0.86rem;
+    cursor: help;
+    border-bottom: 1px dotted var(--muted);
+  }
+  .field input[type="number"],
+  .field input[type="text"],
+  .field select {
+    width: 130px;
+    padding: 4px 6px;
+    font-size: 0.86rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .field input.wide { width: 280px; }
+  .field input[type="checkbox"] { width: 18px; height: 18px; }
+
+  textarea {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--code-bg);
+    color: var(--code-text);
+    resize: vertical;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 28px;
+  }
+  @media (max-width: 720px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .panel-head h2 { border: none; padding: 0; margin: 0; }
+
+  .reward-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+  .reward-row.disabled { opacity: 0.45; }
+  .reward-row .name { font-size: 0.86rem; font-weight: 600; flex: 1; }
+  .reward-row .desc { font-size: 0.76rem; color: var(--muted); flex-basis: 100%; margin-top: 2px; }
+  .reward-row input[type="number"] {
+    width: 70px;
+    padding: 3px 5px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .reward-row input[type="checkbox"] { width: 16px; height: 16px; }
+  .reward-row-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
+
+  .custom-reward {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .custom-reward-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .custom-reward-head input[type="text"] { width: 200px; }
+  .custom-reward-head input[type="number"] { width: 80px; }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin: 6px 0 0;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  button {
+    font-size: 0.76rem;
+    padding: 3px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+
+  .note { font-size: 0.76rem; color: var(--muted); margin: 4px 0 8px; line-height: 1.5; }
+  .code-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+  .code-title-row strong,
+  .code-title-row span { font-size: 0.88rem; }
+
+  .info-link {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+  .info-link:hover { text-decoration: underline; }
+
+  .tooltip-box {
+    position: fixed;
+    z-index: 200;
+    background: #1c1c1e;
+    color: #f2f2f2;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    padding: 7px 11px;
+    border-radius: 7px;
+    max-width: 280px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    display: none;
+  }
+  .tooltip-box.visible { display: block; }
+
+  .info-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .info-overlay.active { display: flex; }
+  .info-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 18px 22px 22px;
+  }
+  .info-box-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  .info-box-head span { font-size: 1.05rem; font-weight: 600; }
+  .activation-entry { margin-bottom: 18px; }
+  .activation-entry:last-child { margin-bottom: 0; }
+  .activation-entry h3 { margin: 0 0 4px; font-size: 0.92rem; }
+  .activation-entry p { margin: 0 0 8px; font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Generic mjlab Task Config Builder</h1>
+  <p>A robot-agnostic version of the UR3e reach config builder: describe your own robot
+     (or paste its MJCF XML to auto-detect joints/sites), pick physics/training settings and
+     reward terms, and download a ready-to-register mjlab task.</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+  <button class="tab-btn" data-tab="robot" onclick="switchTab('robot')">Robot</button>
+  <button class="tab-btn" data-tab="rewards" onclick="switchTab('rewards')">Rewards</button>
+  <button class="tab-btn" data-tab="code" onclick="switchTab('code')">Code Snippets</button>
+  <button class="tab-btn" data-tab="files" onclick="switchTab('files')">Download Files</button>
+</div>
+
+<!-- ============================== Settings tab ============================== -->
+<div class="tab-content" id="tab-settings">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Settings</h2>
+      <button onclick="resetDefaults()">Reset to defaults</button>
+    </div>
+
+    <div class="two-col">
+      <section>
+        <h2 style="border:none; padding:0;">Physics / Episode</h2>
+        <div class="field">
+          <label data-tip="MuJoCo (the physics engine mjlab is built on) doesn't simulate time continuously -- it calculates new positions and speeds in small discrete jumps. This is the size of each jump, in seconds. Smaller jumps are more physically accurate but take more computation to cover the same amount of real time.">timestep</label>
+          <input type="number" id="timestep" value="0.01" step="0.001" min="0.0001">
+        </div>
+        <div class="field">
+          <label data-tip="The specific mathematical recipe MuJoCo uses to compute each timestep jump described above. Different recipes trade off speed, accuracy, and stability differently; you generally don't need to change this.">integrator</label>
+          <select id="integrator">
+            <option>implicitfast</option>
+            <option>Euler</option>
+            <option>RK4</option>
+            <option>implicit</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-tip="The AI doesn't make a brand-new decision on every single physics timestep -- that would be wastefully frequent. Instead it picks one action and that action stays in effect for several physics timesteps in a row before the AI decides again. This is how many timesteps happen per AI decision. (Multiply by 'timestep' above to get how much real time passes between decisions.)">decimation</label>
+          <input type="number" id="decimation" value="10" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="One full practice attempt at the task -- from the robot's starting position until it's reset again -- is called an 'episode.' This is the maximum length of one episode, in seconds, before it's automatically cut off.">episode_length_s</label>
+          <input type="number" id="episode_length_s" value="20.0" step="0.5" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Instead of practicing on just one simulated copy of the robot at a time, mjlab runs many identical copies side by side, all at once, so the AI can gather practice experience quickly. This is how many copies run in parallel. More copies means more experience per second, but needs more computing power -- ideally a GPU (Graphics Processing Unit), a chip built to do huge numbers of small calculations simultaneously.">num_envs</label>
+          <input type="number" id="num_envs" value="512" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Purely cosmetic: how far apart the parallel copies of the simulation are drawn from each other in the 3D viewer, so they don't visually overlap. Has zero effect on the physics.">env_spacing</label>
+          <input type="number" id="env_spacing" value="2.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="The biggest amount any single joint's angle is allowed to change in one AI decision, measured in radians (a unit for angles -- a full circle is about 6.28 radians, so this is a small nudge, not a big swing).">action scale</label>
+          <input type="number" id="action_scale" value="0.08" step="0.01" min="0">
+        </div>
+      </section>
+
+      <section>
+        <h2 style="border:none; padding:0;">Training (PPO / RSL-RL)</h2>
+        <div class="field">
+          <label data-tip="A label used to name the folder where progress snapshots (see save_interval below) and training logs get written on disk.">experiment_name</label>
+          <input type="text" id="experiment_name" value="my_robot_reach">
+        </div>
+        <div class="field">
+          <label data-tip="Training happens as a long sequence of rounds: gather practice experience, then update the AI based on it, then repeat. This is how many rounds the whole training run does before stopping.">max_iterations</label>
+          <input type="number" id="max_iterations" value="2000" step="50" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="How often, in training rounds, a checkpoint -- a saved snapshot of the AI's current abilities -- gets written to disk, so you can pause, resume, or try out an in-progress version later.">save_interval</label>
+          <input type="number" id="save_interval" value="50" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Remember num_envs (above) -- many copies of the simulation running at once? This is how many steps of experience each of those copies contributes before the AI stops to learn from everything gathered so far. Multiply this by num_envs to get the total experience used in one learning round.">num_steps_per_env</label>
+          <input type="number" id="num_steps_per_env" value="24" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="The AI's decision-making is a small neural network (a program loosely modeled on brain cells, built from layers of simple connected units). This is how many units are in each of its two internal layers. More units let it represent more complex behavior, but need more computing power and more practice to train well.">hidden layer width</label>
+          <input type="number" id="hidden_width" value="128" step="8" min="8">
+        </div>
+        <div class="field">
+          <label data-tip="A small mathematical function applied inside the neural network that lets it learn curved, complex behavior instead of only simple straight-line relationships. Click 'what do these mean?' to see exactly what each option computes.">activation</label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <select id="activation">
+              <option>elu</option>
+              <option>relu</option>
+              <option>tanh</option>
+              <option>selu</option>
+            </select>
+            <a href="#" class="info-link" onclick="openActivationInfo(event)">what do these mean?</a>
+          </div>
+        </div>
+        <div class="field">
+          <label data-tip="Automatically rescales the numbers the AI 'sees' each step (its observations) so they're all roughly the same size. Without this, a naturally-large number could unfairly dominate a naturally-tiny one, just because of the units it happens to be measured in.">obs_normalization</label>
+          <input type="checkbox" id="obs_normalization" checked>
+        </div>
+        <div class="field">
+          <label data-tip="How much randomness the AI's actions have right at the start of training, before it has learned anything. More randomness means it tries a wider variety of movements early on ('exploring'); this typically shrinks naturally as training progresses.">init_std</label>
+          <input type="number" id="init_std" value="1.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="PPO (Proximal Policy Optimization -- the learning algorithm used here) updates the AI's behavior a little after every round of practice. This sets a hard limit on how big that single update is allowed to be, as a safety measure.">clip_param</label>
+          <input type="number" id="clip_param" value="0.2" step="0.01" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="A small bonus, separate from the task reward, for keeping some randomness in its actions rather than settling into one fixed behavior too early. Higher values keep the AI trying different strategies for longer.">entropy_coef</label>
+          <input type="number" id="entropy_coef" value="0.01" step="0.001" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Alongside the network that decides what to do (the 'actor'), this project trains a second small network (the 'critic') that predicts how well things are going from any given moment. This controls how much weight that second network's training gets, relative to the actor's.">value_loss_coef</label>
+          <input type="number" id="value_loss_coef" value="1.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Applies the same kind of safety cap described under clip_param above, but to the critic network's updates instead of the decision-making network's updates.">use_clipped_value_loss</label>
+          <input type="checkbox" id="use_clipped_value_loss" checked>
+        </div>
+        <div class="field">
+          <label data-tip="How many times the AI re-studies the same batch of collected practice experience before throwing it away and gathering a fresh batch.">num_learning_epochs</label>
+          <input type="number" id="num_learning_epochs" value="5" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="Each batch of collected experience gets split into this many smaller chunks during learning -- a standard trick that tends to make training more stable and efficient.">num_mini_batches</label>
+          <input type="number" id="num_mini_batches" value="4" step="1" min="1">
+        </div>
+        <div class="field">
+          <label data-tip="How big a step the AI takes when adjusting itself based on what it just learned. Too high and training can become unstable; too low and training takes a very long time.">learning_rate</label>
+          <input type="number" id="learning_rate" value="0.001" step="0.0001" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="Whether learning_rate above stays exactly fixed the whole time ('fixed'), or automatically adjusts itself during training based on how much the AI's behavior is changing each round ('adaptive', using desired_kl below).">schedule</label>
+          <select id="schedule">
+            <option>adaptive</option>
+            <option>fixed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-tip="How much the AI cares about rewards it might get far in the future versus rewards available right now, on a scale from 0 (only the next instant matters) to 1 (the distant future matters equally).">gamma</label>
+          <input type="number" id="gamma" value="0.99" step="0.001" min="0" max="1">
+        </div>
+        <div class="field">
+          <label data-tip="A technical tuning knob (short for 'lambda') used internally when the AI estimates how good a whole sequence of actions turned out to be. A standard default; you generally don't need to touch it.">lam</label>
+          <input type="number" id="lam" value="0.95" step="0.001" min="0" max="1">
+        </div>
+        <div class="field">
+          <label data-tip="A target amount for 'how much the AI's behavior is allowed to change in one learning round,' measured with a statistics tool called KL divergence. Only used when schedule (above) is 'adaptive.'">desired_kl</label>
+          <input type="number" id="desired_kl" value="0.01" step="0.001" min="0">
+        </div>
+        <div class="field">
+          <label data-tip="One more safety net on top of clip_param: a hard ceiling on the overall size of the internal adjustment made in one learning update, to prevent a single bad round of practice from causing a huge, destabilizing change.">max_grad_norm</label>
+          <input type="number" id="max_grad_norm" value="1.0" step="0.1" min="0">
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== Robot tab ============================== -->
+<div class="tab-content" id="tab-robot" style="display:none">
+  <div class="panel">
+    <h2>Robot &amp; task identity</h2>
+    <div class="field">
+      <label data-tip="The string you'll pass to --task on the command line (or load_env_cfg(...) in a notebook) to run this task. Convention is Capitalized-Words-With-Dashes.">task_id</label>
+      <input type="text" id="task_id" class="wide" value="MyRobot-Reach">
+    </div>
+    <div class="field">
+      <label data-tip="A short internal name for your robot within the scene -- just a Python dict key, doesn't need to match anything in the XML. You'll see this name in places like env.scene['robot'].">entity_key</label>
+      <input type="text" id="entity_key" class="wide" value="robot">
+    </div>
+    <div class="field">
+      <label data-tip="The filename of your robot's MJCF (MuJoCo's XML model format) file. The generated task file expects this to sit in the SAME folder as itself -- see the Download Files tab for exactly where to put it.">xml_filename</label>
+      <input type="text" id="xml_filename" class="wide" value="my_robot.xml">
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Joints &amp; end-effector</h2>
+    <p class="note">
+      Paste your robot's MJCF XML below to auto-detect joint and site names (a "site" is
+      MuJoCo's term for a named reference point on the robot -- commonly used to mark an
+      end-effector). Or skip this and just type the names in yourself below.
+    </p>
+    <textarea id="xml_paste" rows="8" placeholder="&lt;mujoco&gt;...&lt;/mujoco&gt;"></textarea>
+    <div style="margin-top:8px;">
+      <button onclick="parseXml()">Parse XML</button>
+      <span id="parse-result" class="note" style="display:inline; margin-left:8px;"></span>
+    </div>
+
+    <div class="field" style="margin-top:14px;">
+      <label data-tip="Comma-separated list of joint names to control -- these become the AI's action space (one output per joint) and are what gets fed into the joint_pos/joint_vel observations. Must exactly match the joint names in your MJCF's <joint name=\"...\"> tags.">joint_names</label>
+      <input type="text" id="joint_names" class="wide" value="joint1, joint2, joint3">
+    </div>
+    <div class="field">
+      <label data-tip="Optional: the name of a <site> in your MJCF marking a point you want the AI to move to a target (e.g. an end-effector, a foot, a gripper tip). Leave this blank if your task isn't about reaching a target position with a specific point -- doing so removes the reach-style reward terms and the target-position observation/command entirely.">end_effector site (optional)</label>
+      <input type="text" id="ee_site_name" class="wide" value="end_effector" list="site-options">
+      <datalist id="site-options"></datalist>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== Rewards tab ============================== -->
+<div class="tab-content" id="tab-rewards" style="display:none">
+  <div class="panel">
+    <h2>Built-in reward terms</h2>
+    <div id="builtin-reward-rows"><!-- injected by JS --></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Custom reward terms</h2>
+      <button onclick="addCustomReward()">+ Add custom reward term</button>
+    </div>
+    <p class="note">
+      Each reward term is just a Python function <code>(env, **params) -&gt; Tensor[num_envs]</code>.
+      Write your own below -- it'll be inserted into the generated task file verbatim, alongside
+      the built-in ones above.
+    </p>
+    <div id="custom-reward-rows"><!-- injected by JS --></div>
+  </div>
+</div>
+
+<!-- ============================== Code Snippets tab ============================== -->
+<div class="tab-content" id="tab-code" style="display:none">
+  <div class="panel">
+    <div class="code-title-row">
+      <span>Full Task Config Code</span>
+      <button onclick="copyBlock('out-task')">Copy</button>
+    </div>
+    <pre><code id="out-task"></code></pre>
+  </div>
+
+  <div class="panel">
+    <div class="code-title-row">
+      <span>Training / PPO Config Code</span>
+      <button onclick="copyBlock('out-rl')">Copy</button>
+    </div>
+    <pre><code id="out-rl"></code></pre>
+  </div>
+</div>
+
+<!-- ============================== Download Files tab ============================== -->
+<div class="tab-content" id="tab-files" style="display:none">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Task files</h2>
+      <button onclick="downloadZipFile()">⬇ Download All (.zip)</button>
+    </div>
+    <p class="note">
+      The zip bundles everything below plus a <code>README.md</code> that explains where your
+      robot's XML file needs to go, how to install mjlab/mujoco, and how to register and run
+      the task -- or download files individually below.
+    </p>
+
+    <div>
+      <div class="code-title-row">
+        <strong>train_custom.sh</strong>
+        <button onclick="downloadShFile()">Download</button>
+      </div>
+      <p class="note">
+        Save anywhere convenient and run with <code>bash train_custom.sh</code> -- first edit the
+        <code>cd</code> line to point at your own mjlab project.
+      </p>
+      <pre><code id="out-sh-file"></code></pre>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="code-title-row">
+        <strong>custom_task.py</strong>
+        <button onclick="downloadPyFile()">Download</button>
+      </div>
+      <p class="note">
+        Save this next to your robot's XML file (named per "xml_filename" in the Robot tab) inside
+        your mjlab project's tasks folder. See the README in the zip for the full walkthrough.
+      </p>
+      <pre><code id="out-py-file"></code></pre>
+    </div>
+
+    <div style="margin-top:18px;" id="commands-file-block">
+      <div class="code-title-row">
+        <strong>commands.py</strong>
+        <button onclick="downloadCommandsFile()">Download</button>
+      </div>
+      <p class="note">
+        Only needed because you set an end-effector site in the Robot tab (a reach-style task).
+        Save it in the same folder as <code>custom_task.py</code>.
+      </p>
+      <pre><code id="out-commands-file"></code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== Activation-info popup ============================== -->
+<div class="info-overlay" id="activation-overlay" onclick="closeActivationInfoOnOverlay(event)">
+  <div class="info-box">
+    <div class="info-box-head">
+      <span>Activation functions</span>
+      <button onclick="closeActivationInfo()">✕</button>
+    </div>
+
+    <div class="activation-entry">
+      <h3>ELU — Exponential Linear Unit (default)</h3>
+      <p>
+        A positive input passes straight through unchanged. A negative input gets
+        squashed toward -1 instead of being cut off at zero, which keeps a small
+        but non-zero slope everywhere -- so the network can keep learning from
+        that unit even when its input goes negative, instead of it getting
+        permanently "stuck."
+      </p>
+      <pre>f(x) =      x            if x &gt; 0
+       α·(eˣ − 1)   if x ≤ 0      (α = 1.0, a fixed constant)</pre>
+    </div>
+
+    <div class="activation-entry">
+      <h3>ReLU — Rectified Linear Unit</h3>
+      <p>
+        The simplest and most common option in neural networks generally: anything
+        negative becomes exactly zero; anything positive passes through unchanged.
+        Very cheap to compute, but a unit whose input always ends up negative can
+        get permanently "dead" -- stuck outputting zero forever -- which is exactly
+        the problem ELU (above) is designed to avoid.
+      </p>
+      <pre>f(x) = max(0, x)</pre>
+    </div>
+
+    <div class="activation-entry">
+      <h3>tanh — hyperbolic tangent</h3>
+      <p>
+        Squashes any input into a range between -1 and 1, following a smooth
+        S-shaped curve. An older, classic choice; less commonly used in modern
+        reinforcement learning because it can slow down learning when inputs are
+        very large or very small (a problem called "vanishing gradients").
+      </p>
+      <pre>f(x) = (eˣ − e⁻ˣ) / (eˣ + e⁻ˣ)</pre>
+    </div>
+
+    <div class="activation-entry">
+      <h3>SELU — Scaled Exponential Linear Unit</h3>
+      <p>
+        The same basic shape as ELU, but multiplied by a specific fixed constant
+        (λ) chosen so that, under the right conditions, the signal passing through
+        many stacked layers automatically settles into a stable, consistent scale
+        on its own ("self-normalizing"), without needing a separate normalization
+        step.
+      </p>
+      <pre>f(x) =      λ·x               if x &gt; 0
+       λ·α·(eˣ − 1)     if x ≤ 0
+   (λ ≈ 1.0507, α ≈ 1.6733 -- fixed constants, not tunable)</pre>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Built-in reward term catalog. "reach" terms are only usable if an
+// end-effector site is set in the Robot tab.
+// ---------------------------------------------------------------------------
+const BUILTIN_REWARDS = [
+  {
+    id: "action_rate",
+    weight: -0.01,
+    on: true,
+    requiresEe: false,
+    desc: "Built-in mjlab term; penalizes jerky/large action changes step-to-step.",
+    func: "mdp_rewards.action_rate_l2",
+    params: `{}`,
+  },
+  {
+    id: "joint_vel",
+    weight: -0.001,
+    on: true,
+    requiresEe: false,
+    desc: "Built-in mjlab term; small general smoothness regularizer on joint velocity.",
+    func: "mdp_rewards.joint_vel_l2",
+    params: `{"asset_cfg": arm_cfg}`,
+  },
+  {
+    id: "reach_distance",
+    weight: 1.0,
+    on: true,
+    requiresEe: true,
+    desc: "Negative distance from your end-effector site to the commanded target -- the core dense shaping reward for a reach-style task.",
+    func: "reach_distance_reward",
+    params: `{"asset_cfg": ee_cfg, "command_name": "reach_target"}`,
+  },
+  {
+    id: "success_bonus",
+    weight: 1.0,
+    on: true,
+    requiresEe: true,
+    desc: "+1 per step while within threshold (0.03m) of target -- rewards actually arriving, not just getting closer.",
+    func: "success_bonus",
+    params: `{"asset_cfg": ee_cfg, "command_name": "reach_target", "threshold": 0.03}`,
+  },
+];
+
+let customRewardCounter = 0;
+const customRewards = [];
+
+function defaultCustomRewardCode(name) {
+  return `def ${name}(env, asset_cfg) -> torch.Tensor:
+    """TODO: implement your reward logic. Must return one number per
+    parallel environment, shape [num_envs]."""
+    arm = env.scene[asset_cfg.name]
+    joint_pos = arm.data.joint_pos[:, asset_cfg.joint_ids]
+    return -torch.sum(torch.square(joint_pos), dim=-1)`;
+}
+
+function addCustomReward() {
+  customRewardCounter += 1;
+  customRewards.push({
+    uid: customRewardCounter,
+    name: `custom_reward_${customRewardCounter}`,
+    weight: 0.1,
+    params: `{"asset_cfg": arm_cfg}`,
+    code: defaultCustomRewardCode(`custom_reward_${customRewardCounter}`),
+  });
+  renderCustomRewards();
+  render();
+}
+
+function removeCustomReward(uid) {
+  const idx = customRewards.findIndex((c) => c.uid === uid);
+  if (idx !== -1) customRewards.splice(idx, 1);
+  renderCustomRewards();
+  render();
+}
+
+function renderBuiltinRewards() {
+  const container = document.getElementById("builtin-reward-rows");
+  container.innerHTML = "";
+  const hasEe = document.getElementById("ee_site_name").value.trim().length > 0;
+
+  BUILTIN_REWARDS.forEach((r) => {
+    const disabled = r.requiresEe && !hasEe;
+    const row = document.createElement("div");
+    row.className = "reward-row" + (disabled ? " disabled" : "");
+
+    const wrap = document.createElement("div");
+    wrap.className = "reward-row-wrap";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "on-" + r.id;
+    cb.checked = r.on && !disabled;
+    cb.disabled = disabled;
+    cb.addEventListener("change", render);
+
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = r.id + (disabled ? " (needs an end-effector site -- see Robot tab)" : "");
+
+    const weight = document.createElement("input");
+    weight.type = "number";
+    weight.step = "0.01";
+    weight.id = "w-" + r.id;
+    weight.value = r.weight;
+    weight.setAttribute("data-tip", "weight for this reward term -- positive encourages, negative penalizes, magnitude controls how much it matters relative to other terms.");
+    weight.addEventListener("input", render);
+
+    const desc = document.createElement("span");
+    desc.className = "desc";
+    desc.textContent = r.desc;
+
+    wrap.appendChild(cb);
+    wrap.appendChild(name);
+    wrap.appendChild(weight);
+    wrap.appendChild(desc);
+    row.appendChild(wrap);
+    container.appendChild(row);
+  });
+
+  attachTooltips(container);
+}
+
+function renderCustomRewards() {
+  const container = document.getElementById("custom-reward-rows");
+  container.innerHTML = "";
+
+  customRewards.forEach((c) => {
+    const box = document.createElement("div");
+    box.className = "custom-reward";
+
+    const head = document.createElement("div");
+    head.className = "custom-reward-head";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = c.name;
+    nameInput.addEventListener("input", (e) => { c.name = e.target.value; render(); });
+
+    const weightInput = document.createElement("input");
+    weightInput.type = "number";
+    weightInput.step = "0.01";
+    weightInput.value = c.weight;
+    weightInput.title = "weight";
+    weightInput.addEventListener("input", (e) => { c.weight = e.target.value; render(); });
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", () => removeCustomReward(c.uid));
+
+    head.appendChild(nameInput);
+    head.appendChild(weightInput);
+    head.appendChild(removeBtn);
+
+    const paramsLabel = document.createElement("p");
+    paramsLabel.className = "note";
+    paramsLabel.textContent = "params (a Python dict literal, passed as keyword args to your function):";
+
+    const paramsInput = document.createElement("input");
+    paramsInput.type = "text";
+    paramsInput.className = "wide";
+    paramsInput.style.width = "100%";
+    paramsInput.value = c.params;
+    paramsInput.addEventListener("input", (e) => { c.params = e.target.value; render(); });
+
+    const codeLabel = document.createElement("p");
+    codeLabel.className = "note";
+    codeLabel.textContent = "Python function body:";
+
+    const codeArea = document.createElement("textarea");
+    codeArea.rows = 6;
+    codeArea.value = c.code;
+    codeArea.addEventListener("input", (e) => { c.code = e.target.value; render(); });
+
+    box.appendChild(head);
+    box.appendChild(paramsLabel);
+    box.appendChild(paramsInput);
+    box.appendChild(codeLabel);
+    box.appendChild(codeArea);
+    container.appendChild(box);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// XML parsing -- pulls joint/site names out of pasted MJCF via regex. This is
+// plain text parsing, not a real XML/MJCF parser, so it's forgiving about
+// most formatting but can be fooled by unusual XML (e.g. names split across
+// lines). Good enough to save typing for the common case.
+// ---------------------------------------------------------------------------
+function parseXml() {
+  const xml = document.getElementById("xml_paste").value;
+  const joints = [...xml.matchAll(/<joint\b[^>]*\bname="([^"]+)"/g)].map((m) => m[1]);
+  const sites = [...xml.matchAll(/<site\b[^>]*\bname="([^"]+)"/g)].map((m) => m[1]);
+
+  const resultEl = document.getElementById("parse-result");
+  if (joints.length === 0 && sites.length === 0) {
+    resultEl.textContent = "No <joint> or <site> tags found -- check the XML was pasted correctly.";
+    return;
+  }
+
+  if (joints.length) {
+    document.getElementById("joint_names").value = joints.join(", ");
+  }
+
+  const datalist = document.getElementById("site-options");
+  datalist.innerHTML = "";
+  sites.forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    datalist.appendChild(opt);
+  });
+  if (sites.length && !sites.includes(document.getElementById("ee_site_name").value.trim())) {
+    document.getElementById("ee_site_name").value = sites[0];
+  }
+
+  resultEl.textContent = `Found ${joints.length} joint(s), ${sites.length} site(s).`;
+  render();
+  renderBuiltinRewards();
+}
+
+document.getElementById("ee_site_name").addEventListener("input", () => {
+  renderBuiltinRewards();
+  render();
+});
+
+// ---------------------------------------------------------------------------
+// Tab handling
+// ---------------------------------------------------------------------------
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab-content").forEach((c) => { c.style.display = "none"; });
+  document.getElementById("tab-" + name).style.display = "block";
+}
+
+// ---------------------------------------------------------------------------
+// Activation-info popup
+// ---------------------------------------------------------------------------
+function openActivationInfo(e) {
+  e.preventDefault();
+  document.getElementById("activation-overlay").classList.add("active");
+}
+function closeActivationInfo() {
+  document.getElementById("activation-overlay").classList.remove("active");
+}
+function closeActivationInfoOnOverlay(e) {
+  if (e.target.id === "activation-overlay") closeActivationInfo();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeActivationInfo();
+});
+
+// ---------------------------------------------------------------------------
+// Value getters / helpers
+// ---------------------------------------------------------------------------
+function v(id) { return document.getElementById(id).value; }
+function num(id) { return parseFloat(document.getElementById(id).value); }
+function int(id) { return parseInt(document.getElementById(id).value, 10); }
+function bool(id) { return document.getElementById(id).checked; }
+function py(b) { return b ? "True" : "False"; }
+
+function jointNamesList() {
+  return v("joint_names").split(",").map((s) => s.trim()).filter(Boolean);
+}
+function eeSiteName() {
+  return v("ee_site_name").trim();
+}
+function pySnakeName(taskId) {
+  return taskId.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "custom_task";
+}
+function pyTuple(names) {
+  if (names.length === 0) return "()";
+  return "(" + names.map((n) => `"${n}"`).join(", ") + (names.length === 1 ? "," : "") + ")";
+}
+function pyHomeQposDict(names) {
+  if (names.length === 0) return "{}";
+  const entries = names.map((n) => `    "${n}": 0.0,`).join("\n");
+  return `{\n${entries}\n}`;
+}
+
+function getEnabledBuiltinRewards() {
+  const hasEe = eeSiteName().length > 0;
+  return BUILTIN_REWARDS.filter((r) => {
+    if (r.requiresEe && !hasEe) return false;
+    const cb = document.getElementById("on-" + r.id);
+    return cb && cb.checked;
+  });
+}
+
+function formatBuiltinRewardEntry(r) {
+  const w = document.getElementById("w-" + r.id).value;
+  const paramsFormatted = r.params.split("\n").map((l, i) => (i === 0 ? l : "        " + l)).join("\n");
+  return `    "${r.id}": RewardTermCfg(
+        func=${r.func},
+        weight=${w},
+        params=${paramsFormatted},
+    ),`;
+}
+
+function formatCustomRewardEntry(c) {
+  return `    "${c.name}": RewardTermCfg(
+        func=${c.name},
+        weight=${c.weight},
+        params=${c.params},
+    ),`;
+}
+
+// ---------------------------------------------------------------------------
+// Main render: regenerates both live code previews plus the download-file
+// contents, since they all depend on the same current form state.
+// ---------------------------------------------------------------------------
+function render() {
+  const jointNames = jointNamesList();
+  const hasEe = eeSiteName().length > 0;
+  const taskId = v("task_id") || "MyRobot-Reach";
+  const entityKey = v("entity_key") || "robot";
+  const snake = pySnakeName(taskId);
+
+  const builtinRewards = getEnabledBuiltinRewards();
+  const rewardEntries = [
+    ...builtinRewards.map(formatBuiltinRewardEntry),
+    ...customRewards.map(formatCustomRewardEntry),
+  ];
+  const rewardsBlock = rewardEntries.length
+    ? `{\n${rewardEntries.join("\n")}\n}`
+    : "{}  # no reward terms selected -- the episode would have zero reward signal";
+
+  const customRewardDefs = customRewards.map((c) => c.code).join("\n\n\n");
+
+  const importsForReach = hasEe
+    ? `
+from .commands import ReachPositionCommandCfg`
+    : "";
+
+  const reachHelpers = hasEe
+    ? `
+
+def ee_to_target(env, asset_cfg: SceneEntityCfg, command_name: str) -> torch.Tensor:
+    """Vector from the tracked site to the commanded target, world frame."""
+    asset = env.scene[asset_cfg.name]
+    ee_pos_w = asset.data.site_pos_w[:, asset_cfg.site_ids].squeeze(1)
+    target_pos_w = env.command_manager.get_command(command_name)
+    return target_pos_w - ee_pos_w
+
+
+def reach_distance_reward(env, asset_cfg: SceneEntityCfg, command_name: str) -> torch.Tensor:
+    """Negative distance from the tracked site to the commanded target."""
+    diff = ee_to_target(env, asset_cfg, command_name)
+    return -torch.norm(diff, dim=-1)
+
+
+def success_bonus(env, asset_cfg: SceneEntityCfg, command_name: str, threshold: float = 0.03) -> torch.Tensor:
+    """+1 per step while within \`threshold\` of the target, 0 otherwise."""
+    diff = ee_to_target(env, asset_cfg, command_name)
+    dist = torch.norm(diff, dim=-1)
+    return (dist < threshold).float()`
+    : "";
+
+  const eeCfgLine = hasEe
+    ? `ee_cfg = SceneEntityCfg("${entityKey}", site_names=("${eeSiteName()}",))\n`
+    : "";
+
+  const actorObsExtra = hasEe
+    ? `,
+    "target_pos": ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "reach_target"}),
+    "ee_to_target": ObservationTermCfg(func=ee_to_target, params={"asset_cfg": ee_cfg, "command_name": "reach_target"})`
+    : "";
+
+  const commandsBlock = hasEe
+    ? `commands = {
+    "reach_target": ReachPositionCommandCfg(
+        entity_name="${entityKey}",
+        site_name="${eeSiteName()}",
+        difficulty="fixed",  # or "dynamic" / "hemisphere" -- see commands.py
+        fixed_target=(0.3, 0.0, 0.3),  # TODO: pick a point reachable by YOUR robot
+        success_threshold=0.03,
+        debug_vis=True,
+    ),
+}`
+    : `commands = {}  # no end-effector site set in the Robot tab -- add a ReachPositionCommandCfg here if needed`;
+
+  const mdpImport = hasEe ? "\nfrom mjlab.envs import mdp" : "";
+
+  const taskSrc = `"""
+Auto-generated by the Generic mjlab Task Config Builder.
+Registers "${taskId}" -- built from the settings you entered in the tool.
+
+WHERE THE XML GOES:
+  Place your robot's MJCF file at:
+      <this file's folder>/${v("xml_filename") || "my_robot.xml"}
+  (edit XML_PATH below if you'd rather point elsewhere)
+"""
+
+from pathlib import Path
+
+import mujoco
+import torch
+
+from mjlab.entity import EntityCfg, EntityArticulationInfoCfg
+from mjlab.actuator import XmlActuatorCfg
+from mjlab.envs import ManagerBasedRlEnvCfg${mdpImport}
+from mjlab.envs.mdp.actions import RelativeJointPositionActionCfg
+from mjlab.envs.mdp.observations import joint_pos_rel, joint_vel_rel
+from mjlab.envs.mdp.events import reset_joints_by_offset
+from mjlab.envs.mdp.terminations import time_out
+from mjlab.envs.mdp import rewards as mdp_rewards
+from mjlab.managers import (
+    ObservationTermCfg,
+    ObservationGroupCfg,
+    RewardTermCfg,
+    TerminationTermCfg,
+    EventTermCfg,
+    SceneEntityCfg,
+)
+from mjlab.scene import SceneCfg
+from mjlab.sim import SimulationCfg, MujocoCfg
+from mjlab.terrains import TerrainEntityCfg
+from mjlab.rl import RslRlModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
+from mjlab.tasks.registry import register_mjlab_task${importsForReach}
+
+XML_PATH = Path(__file__).parent / "${v("xml_filename") || "my_robot.xml"}"
+
+JOINT_NAMES = ${pyTuple(jointNames)}
+
+HOME_QPOS = ${pyHomeQposDict(jointNames)}
+
+
+def _get_spec() -> mujoco.MjSpec:
+    return mujoco.MjSpec.from_file(str(XML_PATH))
+
+
+# Reuses whatever actuators are already defined for these joints in the XML.
+_ARTICULATION = EntityArticulationInfoCfg(
+    actuators=(XmlActuatorCfg(target_names_expr=JOINT_NAMES),),
+)
+
+_INIT_STATE = EntityCfg.InitialStateCfg(
+    joint_pos=HOME_QPOS,
+    joint_vel={".*": 0.0},
+)
+
+
+def _get_entity_cfg() -> EntityCfg:
+    return EntityCfg(
+        spec_fn=_get_spec,
+        articulation=_ARTICULATION,
+        init_state=_INIT_STATE,
+    )
+
+
+arm_cfg = SceneEntityCfg("${entityKey}", joint_names=JOINT_NAMES)
+${eeCfgLine}${reachHelpers}
+
+
+# ---------------------------------------------------------------------------
+# Your custom reward terms (from the Rewards tab)
+# ---------------------------------------------------------------------------
+${customRewardDefs || "# (none added)"}
+
+
+# ---------------------------------------------------------------------------
+# Observations
+# ---------------------------------------------------------------------------
+actor_terms = {
+    "joint_pos": ObservationTermCfg(func=joint_pos_rel, params={"asset_cfg": arm_cfg}),
+    "joint_vel": ObservationTermCfg(func=joint_vel_rel, params={"asset_cfg": arm_cfg})${actorObsExtra},
+}
+
+observations = {
+    "actor": ObservationGroupCfg(actor_terms),
+    "critic": ObservationGroupCfg({**actor_terms}),
+}
+
+# ---------------------------------------------------------------------------
+# Actions -- relative joint-position deltas over all of JOINT_NAMES
+# ---------------------------------------------------------------------------
+actions = {
+    "joint_action": RelativeJointPositionActionCfg(
+        entity_name="${entityKey}",
+        actuator_names=JOINT_NAMES,
+        scale=${num("action_scale")},
+    ),
+}
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+${commandsBlock}
+
+# ---------------------------------------------------------------------------
+# Rewards (from the Rewards tab)
+# ---------------------------------------------------------------------------
+rewards = ${rewardsBlock}
+
+# ---------------------------------------------------------------------------
+# Terminations / events
+# ---------------------------------------------------------------------------
+terminations = {
+    "time_out": TerminationTermCfg(func=time_out, time_out=True),
+}
+
+events = {
+    "reset_joints": EventTermCfg(
+        func=reset_joints_by_offset,
+        mode="reset",
+        params={
+            "position_range": (-0.1, 0.1),
+            "velocity_range": (0.0, 0.0),
+            "asset_cfg": arm_cfg,
+        },
+    ),
+}
+
+
+def _build_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
+    return ManagerBasedRlEnvCfg(
+        scene=SceneCfg(
+            terrain=TerrainEntityCfg(terrain_type="plane"),
+            entities={"${entityKey}": _get_entity_cfg()},
+            num_envs=1 if play else ${int("num_envs")},
+            env_spacing=${num("env_spacing")},
+        ),
+        commands=commands,
+        observations=observations,
+        actions=actions,
+        events=events,
+        rewards=rewards,
+        terminations=terminations,
+        sim=SimulationCfg(
+            mujoco=MujocoCfg(timestep=${num("timestep")}, integrator="${v("integrator")}"),
+        ),
+        decimation=${int("decimation")},
+        episode_length_s=${num("episode_length_s")},
+    )
+
+
+def ${snake}_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+    return RslRlOnPolicyRunnerCfg(
+        actor=RslRlModelCfg(
+            hidden_dims=(${int("hidden_width")}, ${int("hidden_width")}),
+            activation="${v("activation")}",
+            obs_normalization=${py(bool("obs_normalization"))},
+            distribution_cfg={
+                "class_name": "GaussianDistribution",
+                "init_std": ${num("init_std")},
+                "std_type": "scalar",
+            },
+        ),
+        critic=RslRlModelCfg(
+            hidden_dims=(${int("hidden_width")}, ${int("hidden_width")}),
+            activation="${v("activation")}",
+            obs_normalization=${py(bool("obs_normalization"))},
+        ),
+        algorithm=RslRlPpoAlgorithmCfg(
+            value_loss_coef=${num("value_loss_coef")},
+            use_clipped_value_loss=${py(bool("use_clipped_value_loss"))},
+            clip_param=${num("clip_param")},
+            entropy_coef=${num("entropy_coef")},
+            num_learning_epochs=${int("num_learning_epochs")},
+            num_mini_batches=${int("num_mini_batches")},
+            learning_rate=${num("learning_rate")},
+            schedule="${v("schedule")}",
+            gamma=${num("gamma")},
+            lam=${num("lam")},
+            desired_kl=${num("desired_kl")},
+            max_grad_norm=${num("max_grad_norm")},
+        ),
+        experiment_name="${v("experiment_name")}",
+        save_interval=${int("save_interval")},
+        num_steps_per_env=${int("num_steps_per_env")},
+        max_iterations=${int("max_iterations")},
+    )
+
+
+register_mjlab_task(
+    task_id="${taskId}",
+    env_cfg=_build_cfg(play=False),
+    play_env_cfg=_build_cfg(play=True),
+    rl_cfg=${snake}_ppo_runner_cfg(),
+)
+`;
+
+  document.getElementById("out-task").textContent = taskSrc;
+  document.getElementById("out-py-file").textContent = taskSrc;
+
+  const rlPreviewSrc = `# (extracted from the full task file -- see the "Full Task Config Code" block above)
+
+def ${snake}_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+    return RslRlOnPolicyRunnerCfg(
+        actor=RslRlModelCfg(hidden_dims=(${int("hidden_width")}, ${int("hidden_width")}), activation="${v("activation")}", ...),
+        critic=RslRlModelCfg(hidden_dims=(${int("hidden_width")}, ${int("hidden_width")}), activation="${v("activation")}", ...),
+        algorithm=RslRlPpoAlgorithmCfg(clip_param=${num("clip_param")}, entropy_coef=${num("entropy_coef")}, learning_rate=${num("learning_rate")}, ...),
+        experiment_name="${v("experiment_name")}",
+        max_iterations=${int("max_iterations")},
+    )`;
+  document.getElementById("out-rl").textContent = rlPreviewSrc;
+
+  const shContent = `#!/usr/bin/env bash
+# Auto-generated by the Generic mjlab Task Config Builder.
+# Save as train_custom.sh and run: bash train_custom.sh
+#
+# EDIT THE LINE BELOW FIRST: point this at your own mjlab project directory
+# (the one with train/play scripts and this task registered in it).
+cd /path/to/your/mjlab-project
+
+# headless training
+uv run train --task ${taskId}
+
+# watch a trained checkpoint instead (uncomment):
+# uv run play --task ${taskId} --agent trained
+`;
+  document.getElementById("out-sh-file").textContent = shContent;
+
+  document.getElementById("commands-file-block").style.display = hasEe ? "block" : "none";
+}
+
+// ---------------------------------------------------------------------------
+// Download helpers
+// ---------------------------------------------------------------------------
+function copyBlock(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent);
+}
+function resetDefaults() {
+  location.reload();
+}
+function downloadText(filename, content) {
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function downloadPyFile() {
+  downloadText("custom_task.py", document.getElementById("out-py-file").textContent);
+}
+function downloadShFile() {
+  downloadText("train_custom.sh", document.getElementById("out-sh-file").textContent);
+}
+function downloadCommandsFile() {
+  downloadText("commands.py", COMMANDS_PY_SOURCE);
+}
+
+// ---------------------------------------------------------------------------
+// commands.py source, embedded verbatim so the zip/individual download don't
+// need a server round-trip to fetch it. Kept in sync with template/commands.py
+// by hand -- if you edit one, edit the other.
+// ---------------------------------------------------------------------------
+const COMMANDS_PY_SOURCE = `"""
+Generic "reach a 3D target position" command term for any fixed- or
+floating-base mjlab entity that has a named site to track (e.g. an
+end-effector).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Literal
+
+import torch
+
+from mjlab.entity import Entity
+from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
+from mjlab.utils.lab_api.math import sample_uniform
+
+if TYPE_CHECKING:
+    from mjlab.envs.manager_based_rl_env import ManagerBasedRlEnv
+    from mjlab.viewer.debug_visualizer import DebugVisualizer
+
+
+class ReachPositionCommand(CommandTerm):
+    """3D target position for some entity's named site to reach."""
+
+    cfg: ReachPositionCommandCfg
+
+    def __init__(self, cfg: ReachPositionCommandCfg, env: ManagerBasedRlEnv):
+        super().__init__(cfg, env)
+        self.asset: Entity = env.scene[cfg.entity_name]
+        self._site_id = self.asset.site_names.index(cfg.site_name)
+        self.target_pos = torch.zeros(self.num_envs, 3, device=self.device)
+        self.metrics["position_error"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["at_goal"] = torch.zeros(self.num_envs, device=self.device)
+
+    @property
+    def command(self) -> torch.Tensor:
+        return self.target_pos
+
+    def _ee_pos_w(self) -> torch.Tensor:
+        return self.asset.data.site_pos_w[:, self._site_id]
+
+    def _update_metrics(self) -> None:
+        ee_pos_w = self._ee_pos_w()
+        position_error = torch.norm(self.target_pos - ee_pos_w, dim=-1)
+        self.metrics["position_error"] = position_error
+        self.metrics["at_goal"] = (position_error < self.cfg.success_threshold).float()
+
+    def compute_success(self) -> torch.Tensor:
+        return self.metrics["position_error"] < self.cfg.success_threshold
+
+    def _resample_command(self, env_ids: torch.Tensor) -> None:
+        n = len(env_ids)
+        if self.cfg.difficulty == "fixed":
+            target_pos = torch.tensor(self.cfg.fixed_target, device=self.device, dtype=torch.float32).expand(n, 3)
+        elif self.cfg.difficulty == "dynamic":
+            r = self.cfg.target_position_range
+            lower = torch.tensor([r.x[0], r.y[0], r.z[0]], device=self.device)
+            upper = torch.tensor([r.x[1], r.y[1], r.z[1]], device=self.device)
+            target_pos = sample_uniform(lower, upper, (n, 3), device=self.device)
+        else:
+            assert self.cfg.difficulty == "hemisphere"
+            target_pos = self._sample_hemisphere(n)
+        # NOTE: fixed-base entities report site_pos_w relative to their own
+        # base, not shifted per parallel-env tile -- don't add env_origins
+        # here for those. Floating-base entities likely need it added.
+        self.target_pos[env_ids] = target_pos
+
+    def _sample_hemisphere(self, n: int) -> torch.Tensor:
+        h = self.cfg.hemisphere
+        center = torch.tensor(h.center, device=self.device, dtype=torch.float32)
+        points = torch.zeros(n, 3, device=self.device)
+        remaining = torch.arange(n, device=self.device)
+        while remaining.numel() > 0:
+            m = remaining.numel()
+            direction = torch.randn(m, 3, device=self.device)
+            direction = direction / torch.norm(direction, dim=-1, keepdim=True)
+            radii = h.radius * torch.rand(m, device=self.device).pow(1.0 / 3.0)
+            candidates = center + direction * radii.unsqueeze(-1)
+            valid = candidates[:, 2] >= h.min_z
+            points[remaining[valid]] = candidates[valid]
+            remaining = remaining[~valid]
+        return points
+
+    def _update_command(self) -> None:
+        pass
+
+    def _debug_vis_impl(self, visualizer: DebugVisualizer) -> None:
+        env_indices = visualizer.get_env_indices(self.num_envs)
+        if not env_indices:
+            return
+        for batch in env_indices:
+            target_pos = self.target_pos[batch].cpu().numpy()
+            visualizer.add_sphere(center=target_pos, radius=0.02, color=self.cfg.viz.target_color, label=f"reach_target_{batch}")
+
+
+@dataclass(kw_only=True)
+class ReachPositionCommandCfg(CommandTermCfg):
+    entity_name: str
+    site_name: str = "end_effector"
+    success_threshold: float = 0.03
+    difficulty: Literal["fixed", "dynamic", "hemisphere"] = "fixed"
+    fixed_target: tuple[float, float, float] = (0.3, 0.0, 0.3)
+
+    @dataclass
+    class TargetPositionRangeCfg:
+        x: tuple[float, float] = (0.2, 0.4)
+        y: tuple[float, float] = (-0.2, 0.2)
+        z: tuple[float, float] = (0.15, 0.4)
+
+    target_position_range: TargetPositionRangeCfg = field(default_factory=TargetPositionRangeCfg)
+
+    @dataclass
+    class HemisphereRangeCfg:
+        center: tuple[float, float, float] = (0.0, 0.0, 0.3)
+        radius: float = 0.7
+        min_z: float = 0.05
+
+    hemisphere: HemisphereRangeCfg = field(default_factory=HemisphereRangeCfg)
+
+    @dataclass
+    class VizCfg:
+        target_color: tuple[float, float, float, float] = (0.1, 0.9, 0.2, 0.6)
+
+    viz: VizCfg = field(default_factory=VizCfg)
+
+    def build(self, env: ManagerBasedRlEnv) -> ReachPositionCommand:
+        return ReachPositionCommand(self, env)
+`;
+
+// ---------------------------------------------------------------------------
+// README for the zip bundle
+// ---------------------------------------------------------------------------
+function buildReadmeContent() {
+  const taskId = v("task_id") || "MyRobot-Reach";
+  const xmlName = v("xml_filename") || "my_robot.xml";
+  const hasEe = eeSiteName().length > 0;
+  const date = new Date().toISOString().slice(0, 10);
+
+  return `# ${taskId} -- Custom mjlab Task Bundle
+
+Auto-generated by the Generic mjlab Task Config Builder on ${date}.
+
+This registers a new mjlab task, "${taskId}", built from the robot description,
+physics/training settings, and reward terms you entered in the tool.
+
+## What's in this zip
+
+- custom_task.py -- registers the task.
+- train_custom.sh -- headless training / play commands for it.
+${hasEe ? "- commands.py -- a generic reach-target command term custom_task.py depends on.\n" : ""}- This README.
+
+## 1. Prerequisites: mjlab, mujoco, and a place to put your robot's XML
+
+This bundle does NOT include your robot's MJCF (XML model) file, or the mjlab/mujoco
+Python packages -- those need to come from wherever your robot's model already lives,
+plus a working mjlab installation.
+
+If you don't already have an mjlab project set up:
+
+    mkdir my-robot-project && cd my-robot-project
+    uv init
+    uv add mjlab mujoco mujoco-warp torch
+
+(\`uv\` is a fast Python package/project manager -- install it from
+https://docs.astral.sh/uv/ if you don't have it.)
+
+If you already have an mjlab project (e.g. one built from the UR3e reach example this
+tool was originally built for -- see
+https://github.com/chrisbuerginrogers/Simulations), just use that existing project's
+\`.venv\` instead of creating a new one.
+
+## 2. Where your robot's XML goes
+
+custom_task.py expects to find your robot's MJCF file **in the same folder as
+itself**, named exactly:
+
+    ${xmlName}
+
+(Change the \`XML_PATH\` line near the top of custom_task.py if you'd rather point
+somewhere else, e.g. a shared assets/ folder.) If your robot's XML references mesh
+files (via <mesh file="...">), make sure those meshes are placed wherever the XML's
+<compiler meshdir="..."> setting says to look for them -- typically a subfolder next
+to the XML itself.
+
+## 3. Drop this bundle's files in
+
+Save custom_task.py${hasEe ? " and commands.py" : ""} next to ${xmlName}, inside
+your mjlab project's tasks folder. Then make the task register on import -- either
+add this to that package's __init__.py:
+
+    from . import custom_task  # noqa: F401
+
+or just \`import custom_task\` directly in a notebook/script.
+
+## 4. Train
+
+    bash train_custom.sh
+
+Edit the \`cd\` line inside it first -- it needs to point at your own mjlab project.
+
+## 5. Changing your mind
+
+Re-run the config builder any time to generate a fresh bundle with different
+settings, robot description, or reward terms.
+`;
+}
+
+// ---------------------------------------------------------------------------
+// Minimal client-side ZIP writer (stored/uncompressed entries only).
+// ---------------------------------------------------------------------------
+function crc32(bytes) {
+  let crc = ~0;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (~crc) >>> 0;
+}
+
+function makeZipBlob(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const DOS_DATE = 0x0021;
+  const DOS_TIME = 0x0000;
+
+  files.forEach((f) => {
+    const nameBytes = encoder.encode(f.name);
+    const dataBytes = encoder.encode(f.content);
+    const crc = crc32(dataBytes);
+    const size = dataBytes.length;
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0, true);
+    local.setUint16(8, 0, true);
+    local.setUint16(10, DOS_TIME, true);
+    local.setUint16(12, DOS_DATE, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, size, true);
+    local.setUint32(22, size, true);
+    local.setUint16(26, nameBytes.length, true);
+    local.setUint16(28, 0, true);
+    const localHeaderBytes = new Uint8Array(local.buffer);
+
+    localParts.push(localHeaderBytes, nameBytes, dataBytes);
+
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014b50, true);
+    central.setUint16(4, 20, true);
+    central.setUint16(6, 20, true);
+    central.setUint16(8, 0, true);
+    central.setUint16(10, 0, true);
+    central.setUint16(12, DOS_TIME, true);
+    central.setUint16(14, DOS_DATE, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, size, true);
+    central.setUint32(24, size, true);
+    central.setUint16(28, nameBytes.length, true);
+    central.setUint16(30, 0, true);
+    central.setUint16(32, 0, true);
+    central.setUint16(34, 0, true);
+    central.setUint16(36, 0, true);
+    central.setUint32(38, 0, true);
+    central.setUint32(42, offset, true);
+
+    centralParts.push(new Uint8Array(central.buffer), nameBytes);
+    offset += localHeaderBytes.length + nameBytes.length + dataBytes.length;
+  });
+
+  const centralStart = offset;
+  const centralSize = centralParts.reduce((sum, p) => sum + p.length, 0);
+
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(4, 0, true);
+  end.setUint16(6, 0, true);
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, centralStart, true);
+  end.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, new Uint8Array(end.buffer)], {
+    type: "application/zip",
+  });
+}
+
+function downloadZipFile() {
+  const hasEe = eeSiteName().length > 0;
+  const files = [
+    { name: "README.md", content: buildReadmeContent() },
+    { name: "custom_task.py", content: document.getElementById("out-py-file").textContent },
+    { name: "train_custom.sh", content: document.getElementById("out-sh-file").textContent },
+  ];
+  if (hasEe) {
+    files.push({ name: "commands.py", content: COMMANDS_PY_SOURCE });
+  }
+  const blob = makeZipBlob(files);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "custom-mjlab-task.zip";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// Custom tooltips (data-tip="..."). Rendered as a single floating box
+// positioned with the mouse, appended directly to <body>.
+// ---------------------------------------------------------------------------
+const tooltipBox = document.createElement("div");
+tooltipBox.className = "tooltip-box";
+document.body.appendChild(tooltipBox);
+
+function showTooltip(e) {
+  const text = e.currentTarget.getAttribute("data-tip");
+  if (!text) return;
+  tooltipBox.textContent = text;
+  tooltipBox.classList.add("visible");
+  positionTooltip(e);
+}
+function positionTooltip(e) {
+  const pad = 16;
+  const rect = tooltipBox.getBoundingClientRect();
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+  tooltipBox.style.left = Math.max(4, x) + "px";
+  tooltipBox.style.top = Math.max(4, y) + "px";
+}
+function hideTooltip() {
+  tooltipBox.classList.remove("visible");
+}
+function attachTooltips(root) {
+  root.querySelectorAll("[data-tip]").forEach((el) => {
+    if (el.dataset.tipBound) return;
+    el.dataset.tipBound = "1";
+    el.addEventListener("mouseenter", showTooltip);
+    el.addEventListener("mousemove", positionTooltip);
+    el.addEventListener("mouseleave", hideTooltip);
+  });
+}
+attachTooltips(document);
+
+// wire up all settings/robot inputs to re-render on change
+document.querySelectorAll("#tab-settings input, #tab-settings select, #tab-robot input").forEach((el) => {
+  el.addEventListener("input", render);
+  el.addEventListener("change", render);
+});
+
+renderBuiltinRewards();
+renderCustomRewards();
+render();
+</script>
+
+</body>
+</html>

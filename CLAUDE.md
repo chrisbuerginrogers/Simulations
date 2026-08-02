@@ -96,6 +96,34 @@ Tooltip copy in this tool is intentionally written for **a smart reader with zer
 domain background** — every acronym gets spelled out in-line (the tooltip has to
 stand alone; there's no guaranteed reading order). Keep that bar if you add more.
 
+## `template/` — the generic (robot-agnostic) version of the config tool
+
+Same idea as `ur3e/config_builder/`, generalized to any robot instead of hardcoded to
+UR3e reach. Live at **https://chrisbuerginrogers.github.io/Simulations/template/**
+(also runnable locally via its own `serve.py`, port 8766 so it doesn't clash with
+`ur3e/config_builder/`'s server on 8765). Five tabs: Settings (same generic
+physics/PPO fields as the UR3e tool, byte-for-byte reusable), Robot (task id, entity
+name, XML filename, joint names — with a "paste your MJCF, auto-detect joints/sites"
+helper via regex), Rewards (two generic built-ins plus a fully custom
+name/weight/Python-body reward builder), Code Snippets, Download Files.
+
+The generated `custom_task.py` builds a complete `ManagerBasedRlEnvCfg` **from
+scratch** (unlike the UR3e tool's version, which imports from an existing
+`ur3e_reach_env_cfg.py`) — it has no dependency on this repo's `ur3e/` package at
+all. If an end-effector site is set in the Robot tab, it also depends on
+`template/commands.py`, a copy of `ur3e/commands.py`'s `ReachPositionCommandCfg`
+(already entity/site-name-agnostic in its original form, just genericized in its
+docstrings/defaults). Ship `commands.py`'s exact source is also embedded as a JS
+string constant (`COMMANDS_PY_SOURCE`) inside `template/index.html` so the download
+doesn't need a server round-trip — **keep both copies in sync by hand** if you edit
+the reach-command logic.
+
+This is a real starting-point generator, verified end-to-end (fake-DOM harness run
+through Node, output checked with `ast.parse`), not just a mockup — but it's
+explicitly not a fully-automatic "any robot, zero editing" tool: home pose, target
+position, and reward tuning are left as clearly-marked defaults/TODOs since those are
+inherently robot-specific.
+
 ## Working conventions in this repo
 
 - Commits end with a `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`

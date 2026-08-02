@@ -19,6 +19,13 @@ sanity check up through a UR3e robot arm reach task trained with reinforcement l
 
     ### 👉 [UR3e Reach Config Builder](https://chrisbuerginrogers.github.io/Simulations/ur3e/config_builder/)
 
+- **[template](template/)** — a robot-agnostic version of the config builder above: describe
+  any robot (paste its MJCF XML to auto-detect joints/sites), pick settings and reward terms,
+  and download a ready-to-register mjlab task for it. Run locally with `python3 serve.py`
+  inside that folder. Try it live:
+
+    ### 👉 [Generic mjlab Task Config Builder](https://chrisbuerginrogers.github.io/Simulations/template/)
+
 ## Setup
 
 Each project shares one [`uv`](https://docs.astral.sh/uv/)-managed virtual environment at the repo

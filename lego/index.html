@@ -1,0 +1,1693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEGO × mjlab — Sim-to-Real Workbench</title>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    /* ground — cool-biased neutrals, not pure grey */
+    --bg:        #f4f6f8;
+    --panel:     #ffffff;
+    --panel-2:   #eef1f4;
+    --border:    #d5dae0;
+    --border-2:  #c2c9d1;
+    --text:      #14181c;
+    --muted:     #5c6672;
+    --faint:     #8a939e;
+
+    /* the two worlds — used everywhere, not just in charts */
+    --sim:       #2a78d6;
+    --sim-soft:  #e3edfa;
+    --real:      #eb6834;
+    --real-soft: #fdeade;
+
+    /* status — reserved, never reused as a series */
+    --good:      #1baf7a;
+    --warn:      #eda100;
+    --crit:      #e34948;
+
+    --code-bg:   #10161d;
+    --code-text: #cdd7e2;
+    --code-dim:  #7f8c9b;
+
+    --radius: 8px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --bg:        #14171a;
+      --panel:     #1c2024;
+      --panel-2:   #24292f;
+      --border:    #333940;
+      --border-2:  #444c55;
+      --text:      #e8ecf0;
+      --muted:     #9aa4b0;
+      --faint:     #6e7883;
+      --sim:       #3987e5;
+      --sim-soft:  #1b2c42;
+      --real:      #d95926;
+      --real-soft: #3a2318;
+      --good:      #199e70;
+      --warn:      #c98500;
+      --crit:      #e66767;
+      --code-bg:   #0d1117;
+      --code-text: #c9d1d9;
+      --code-dim:  #6e7681;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #14171a;
+    --panel:     #1c2024;
+    --panel-2:   #24292f;
+    --border:    #333940;
+    --border-2:  #444c55;
+    --text:      #e8ecf0;
+    --muted:     #9aa4b0;
+    --faint:     #6e7883;
+    --sim:       #3987e5;
+    --sim-soft:  #1b2c42;
+    --real:      #d95926;
+    --real-soft: #3a2318;
+    --good:      #199e70;
+    --warn:      #c98500;
+    --crit:      #e66767;
+    --code-bg:   #0d1117;
+    --code-text: #c9d1d9;
+    --code-dim:  #6e7681;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .masthead-inner {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap; padding: 26px 0 20px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 6px;
+  }
+  .masthead h1 {
+    margin: 0; font-size: 1.75rem; font-weight: 650; letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .masthead p.lede {
+    margin: 8px 0 0; color: var(--muted); font-size: 0.95rem; max-width: 62ch;
+  }
+  /* the two-world key, stated once up front — this is the page's whole thesis */
+  .worldkey { display: flex; gap: 18px; font-family: var(--mono); font-size: 0.78rem; }
+  .worldkey span { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .swatch { width: 22px; height: 3px; border-radius: 2px; display: inline-block; }
+  .swatch.sim  { background: var(--sim); }
+  .swatch.real { background: var(--real); }
+
+  /* ---------- tabs ---------- */
+  nav.tabs {
+    border-bottom: 1px solid var(--border); background: var(--panel);
+    position: sticky; top: 0; z-index: 20;
+  }
+  nav.tabs > .wrap { display: flex; gap: 2px; flex-wrap: wrap; }
+  .tab-btn {
+    appearance: none; background: none; border: 0; cursor: pointer;
+    border-bottom: 2px solid transparent; padding: 11px 15px;
+    font-family: var(--sans); font-size: 0.88rem; font-weight: 550;
+    color: var(--muted); transition: color .12s, border-color .12s;
+  }
+  .tab-btn:hover { color: var(--text); border-bottom-color: var(--border-2); }
+  .tab-btn[aria-selected="true"] { color: var(--sim); border-bottom-color: var(--sim); }
+  .tab-btn:focus-visible { outline: 2px solid var(--sim); outline-offset: -2px; }
+
+  main { padding: 30px 0 90px; }
+  .panel-view[hidden] { display: none; }
+
+  h2.sect {
+    font-size: 1.18rem; font-weight: 620; letter-spacing: -0.01em;
+    margin: 0 0 4px; text-wrap: balance;
+  }
+  p.sect-note { margin: 0 0 22px; color: var(--muted); font-size: 0.9rem; max-width: 68ch; }
+
+  /* ---------- setup steps (numbering is real: this is an ordered pipeline) ---------- */
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .step {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .step-head {
+    display: flex; align-items: center; gap: 13px; padding: 13px 16px;
+    cursor: pointer; user-select: none;
+  }
+  .step-head:focus-visible { outline: 2px solid var(--sim); outline-offset: -2px; }
+  .step-num {
+    font-family: var(--mono); font-size: 0.74rem; font-weight: 600;
+    width: 26px; height: 26px; flex: 0 0 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--panel-2); color: var(--muted);
+    border: 1px solid var(--border); transition: background .15s, color .15s;
+  }
+  .step.done .step-num { background: var(--good); color: #fff; border-color: var(--good); }
+  .step-title { font-weight: 560; font-size: 0.95rem; flex: 1; }
+  .step-where {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: .07em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 20px;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .step-where.sim  { color: var(--sim);  background: var(--sim-soft);  border-color: var(--sim); }
+  .step-where.real { color: var(--real); background: var(--real-soft); border-color: var(--real); }
+  .step-where.both { color: var(--muted); background: var(--panel-2); border-color: var(--border-2); }
+  .step-body { padding: 0 16px 16px 55px; display: none; }
+  .step.open .step-body { display: block; }
+  .step-body p { margin: 0 0 10px; font-size: 0.9rem; color: var(--muted); }
+  .verify {
+    display: flex; gap: 9px; align-items: flex-start; font-size: 0.85rem;
+    background: var(--panel-2); border-left: 2px solid var(--good);
+    padding: 9px 12px; border-radius: 0 4px 4px 0; margin-top: 10px;
+  }
+  .verify b { color: var(--text); font-weight: 600; }
+  .verify span { color: var(--muted); }
+
+  /* ---------- code blocks ---------- */
+  .code {
+    position: relative; background: var(--code-bg); color: var(--code-text);
+    border-radius: 6px; padding: 12px 14px; overflow-x: auto;
+    font-family: var(--mono); font-size: 0.8rem; line-height: 1.65;
+    margin: 10px 0; tab-size: 2;
+  }
+  .code pre { margin: 0; white-space: pre; }
+  .code .c { color: var(--code-dim); }
+  .copy {
+    position: absolute; top: 7px; right: 7px; cursor: pointer;
+    background: rgba(255,255,255,.08); color: var(--code-text);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 4px;
+    font-family: var(--mono); font-size: 0.68rem; padding: 3px 8px;
+  }
+  .copy:hover { background: rgba(255,255,255,.16); }
+  .copy:focus-visible { outline: 2px solid var(--sim); }
+
+  /* ---------- project cards ---------- */
+  .projects { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .proj {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 17px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .proj-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .proj h3 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+  .diff {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: .08em;
+    text-transform: uppercase; white-space: nowrap; padding: 2px 7px;
+    border-radius: 3px; border: 1px solid var(--border-2); color: var(--muted);
+    background: var(--panel-2);
+  }
+  .diff.badge { color: #fff; background: var(--sim); border-color: var(--sim); }
+  .proj.lead { border-color: var(--sim); box-shadow: 0 0 0 1px var(--sim); }
+  .proj .why {
+    font-size: 0.87rem; margin: 0; color: var(--text);
+  }
+  .proj .why b { color: var(--sim); font-weight: 600; }
+  .proj dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 0.82rem; }
+  .proj dt {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--faint); padding-top: 2px;
+  }
+  .proj dd { margin: 0; color: var(--muted); }
+  .gap-lesson {
+    font-size: 0.84rem; border-left: 2px solid var(--real);
+    background: var(--real-soft); padding: 8px 11px; border-radius: 0 4px 4px 0;
+  }
+  .gap-lesson b {
+    display: block; font-family: var(--mono); font-size: 0.64rem;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--real); margin-bottom: 2px;
+  }
+  .reset-meter { display: flex; align-items: center; gap: 6px; }
+  .reset-meter i {
+    width: 16px; height: 5px; border-radius: 1px; background: var(--border-2); display: inline-block;
+  }
+  .reset-meter i.on { background: var(--warn); }
+
+  /* ---------- model routes ---------- */
+  .routes { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+  .route {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 17px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .route.rec { border-color: var(--sim); box-shadow: 0 0 0 1px var(--sim); }
+  .route h3 { margin: 0; font-size: 0.97rem; font-weight: 600; }
+  .route .tagline {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .route.rec .tagline { color: var(--sim); font-weight: 600; }
+  .route p { margin: 0; font-size: 0.87rem; color: var(--muted); }
+  .route .verdict { font-size: 0.85rem; color: var(--text); }
+  .route ul { margin: 0; padding-left: 17px; font-size: 0.84rem; color: var(--muted); }
+  .route ul li { margin-bottom: 3px; }
+
+  ul.plainlist { margin: 0; padding-left: 18px; font-size: 0.87rem; color: var(--muted); }
+  ul.plainlist li { margin-bottom: 5px; }
+  ul.plainlist b { color: var(--text); }
+  .hint code, .callout code, ul.plainlist code, .route code {
+    font-family: var(--mono); font-size: 0.82em; background: var(--panel-2);
+    padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border);
+  }
+
+  /* ---------- generic form + card ---------- */
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 17px 18px;
+  }
+  .card h3 {
+    margin: 0 0 3px; font-size: 0.95rem; font-weight: 600;
+  }
+  .card > p.hint { margin: 0 0 14px; font-size: 0.85rem; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 18px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .field input, .field select {
+    font-family: var(--mono); font-size: 0.83rem; padding: 7px 9px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-2); border-radius: 5px;
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--sim); outline-offset: -1px; }
+  .fieldnote { margin: 3px 0 0; font-size: 0.76rem; color: var(--muted); }
+  .fieldnote code {
+    font-family: var(--mono); font-size: 0.95em; background: var(--panel-2);
+    padding: 1px 4px; border-radius: 3px; border: 1px solid var(--border);
+  }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-row input[type=range] { flex: 1; accent-color: var(--sim); }
+  .range-row output {
+    font-family: var(--mono); font-size: 0.8rem; min-width: 62px; text-align: right;
+    font-variant-numeric: tabular-nums; color: var(--text);
+  }
+
+  /* ---------- the gap workbench ---------- */
+  .bench { display: grid; grid-template-columns: 290px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .bench { grid-template-columns: 1fr; } .grid2 { grid-template-columns: 1fr; } }
+
+  .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 17px 18px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+  .chart-title { margin: 0; font-size: 0.95rem; font-weight: 600; }
+  .chart-sub { margin: 2px 0 0; font-size: 0.82rem; color: var(--muted); }
+  .legend { display: flex; gap: 14px; font-size: 0.8rem; }
+  .legend span { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .chart-scroll { overflow-x: auto; }
+  svg.chart { display: block; width: 100%; min-width: 460px; height: auto; }
+  .grid-line { stroke: var(--border); stroke-width: 1; }
+  .axis-text { fill: var(--faint); font-family: var(--mono); font-size: 10px; }
+  .series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .series-label { font-family: var(--mono); font-size: 10.5px; font-weight: 600; }
+  .band { fill: var(--real); opacity: 0.09; }
+  .crosshair { stroke: var(--border-2); stroke-width: 1; stroke-dasharray: 3 3; }
+  .dot-sim  { fill: var(--sim);  stroke: var(--panel); stroke-width: 2; }
+  .dot-real { fill: var(--real); stroke: var(--panel); stroke-width: 2; }
+
+  .tip {
+    position: absolute; pointer-events: none; z-index: 40;
+    background: var(--panel); border: 1px solid var(--border-2);
+    border-radius: 6px; padding: 8px 10px; font-size: 0.78rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,.14); min-width: 132px;
+  }
+  .tip .tip-t { font-family: var(--mono); color: var(--muted); font-size: 0.7rem; margin-bottom: 4px; }
+  .tip .tip-r { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+  .tip .tip-r b { font-weight: 600; }
+
+  /* stat tiles */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 11px; margin-top: 15px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .stat .k {
+    font-family: var(--mono); font-size: 0.63rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--faint); display: block; margin-bottom: 3px;
+  }
+  .stat .v { font-size: 1.25rem; font-weight: 620; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat .u { font-size: 0.72rem; color: var(--muted); font-weight: 400; margin-left: 2px; }
+
+  /* diagnostic */
+  .diag { margin-top: 16px; }
+  .diag-row {
+    display: grid; grid-template-columns: 12px 1fr; gap: 11px;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 11px 13px; margin-bottom: 9px; background: var(--panel);
+    align-items: start;
+  }
+  .diag-row.hit { border-color: var(--warn); background: var(--panel-2); }
+  .sev { width: 4px; border-radius: 2px; background: var(--border-2); align-self: stretch; min-height: 34px; }
+  .diag-row.hit .sev { background: var(--warn); }
+  .diag h4 { margin: 0 0 3px; font-size: 0.88rem; font-weight: 600; }
+  .diag .sig { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); margin: 0 0 6px; }
+  .diag .fix { margin: 0; font-size: 0.85rem; color: var(--muted); }
+  .diag .fix b { color: var(--text); font-weight: 600; }
+  .diag-row.hit h4::after {
+    content: "matches your run"; margin-left: 8px; font-family: var(--mono);
+    font-size: 0.62rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--warn); font-weight: 600;
+  }
+
+  /* ---------- task anatomy ---------- */
+  .anat-list { display: flex; flex-direction: column; gap: 3px; }
+  .anat-btn {
+    display: flex; align-items: baseline; gap: 9px; width: 100%; text-align: left;
+    cursor: pointer; background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px;
+    font-family: var(--sans); font-size: 0.88rem;
+  }
+  .anat-btn:hover { border-color: var(--border-2); background: var(--panel-2); }
+  .anat-btn[aria-current="true"] {
+    border-color: var(--sim); background: var(--sim-soft); font-weight: 600;
+  }
+  .anat-btn .ix {
+    font-family: var(--mono); font-size: 0.68rem; color: var(--faint);
+    font-variant-numeric: tabular-nums; font-weight: 400;
+  }
+  .anat-btn[aria-current="true"] .ix { color: var(--sim); }
+
+  .knobs { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 4px 0 6px; }
+  .knobs th, .knobs td {
+    text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .knobs th {
+    font-family: var(--mono); font-size: 0.64rem; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--faint); font-weight: 600;
+  }
+  .knobs td:first-child {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--sim); white-space: nowrap;
+  }
+  .knobs td:last-child { color: var(--muted); }
+  .knobs td em {
+    font-style: normal; font-family: var(--mono); font-size: 0.76rem;
+    color: var(--text); white-space: nowrap;
+  }
+
+  table.data { border-collapse: collapse; width: 100%; font-size: 0.8rem; margin-top: 12px; }
+  table.data th, table.data td {
+    text-align: right; padding: 5px 9px; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  table.data th {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--faint); font-weight: 600;
+  }
+  table.data th:first-child, table.data td:first-child { text-align: left; }
+  details.tbl summary {
+    cursor: pointer; font-size: 0.82rem; color: var(--muted); margin-top: 14px;
+    font-family: var(--mono);
+  }
+  details.tbl summary:focus-visible { outline: 2px solid var(--sim); }
+
+  .btn {
+    cursor: pointer; font-family: var(--sans); font-size: 0.85rem; font-weight: 550;
+    padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border-2);
+    background: var(--panel); color: var(--text);
+  }
+  .btn:hover { background: var(--panel-2); }
+  .btn:focus-visible { outline: 2px solid var(--sim); outline-offset: 1px; }
+  .btn.primary { background: var(--sim); border-color: var(--sim); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+
+  /* the arrow rides with its chip, so a wrap never strands one at a line end */
+  ol.loop {
+    list-style: none; margin: 10px 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 7px 0; align-items: center;
+  }
+  ol.loop li { display: flex; align-items: center; }
+  ol.loop li:not(:last-child)::after {
+    content: "→"; color: var(--faint); font-size: 0.8rem; padding: 0 7px;
+  }
+  ol.loop code {
+    font-family: var(--mono); font-size: 0.78rem; background: var(--panel-2);
+    padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);
+    color: var(--text); white-space: nowrap;
+  }
+  ol.loop li:last-child code { border-color: var(--sim); color: var(--sim); }
+
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--warn);
+    background: var(--panel); border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 13px 16px; margin: 18px 0; font-size: 0.87rem; color: var(--muted);
+  }
+  .callout b { color: var(--text); }
+
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <div>
+      <p class="eyebrow">LEGO Education × mjlab · reinforcement learning lab</p>
+      <h1>Sim-to-Real Workbench</h1>
+      <p class="lede">Train a policy in MuJoCo, run it on the LEGO hub, measure exactly how far apart
+        the two worlds are — then close the distance and do it again.</p>
+    </div>
+    <div class="worldkey">
+      <span><i class="swatch sim"></i> Simulation</span>
+      <span><i class="swatch real"></i> Hardware</span>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Workbench sections">
+  <div class="wrap">
+    <button class="tab-btn" role="tab" aria-selected="true"  aria-controls="v-setup"  id="t-setup">Setup</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="v-proj"   id="t-proj">Projects</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="v-model"  id="t-model">Robot Model</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="v-train"  id="t-train">Train</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="v-anat"   id="t-anat">Task Anatomy</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="v-deploy" id="t-deploy">Deploy</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="v-gap"    id="t-gap">Measure the Gap</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ============================= SETUP ============================= -->
+<section class="panel-view" id="v-setup" role="tabpanel" aria-labelledby="t-setup">
+  <h2 class="sect">Get both worlds running before you train anything</h2>
+  <p class="sect-note">Simulation and hardware are separate installs with separate failure modes.
+    Prove each one works on its own — the smoke tests in steps 4 and 5 are the ones that matter,
+    because a policy that fails later is almost never failing for the reason you think.</p>
+
+  <ol class="steps" id="steps"></ol>
+
+  <div class="callout">
+    <b>Python version pin.</b> mjlab and the LEGO library want different things often enough that it is
+    worth keeping them in one environment only if <code>uv sync</code> resolves cleanly. If it fights you,
+    split them: mjlab in this repo's <code>.venv</code> for training, a small separate env for the
+    hardware bridge. The two never need to run in the same process — they exchange a policy file.
+  </div>
+</section>
+
+<!-- ============================= PROJECTS ============================= -->
+<section class="panel-view" id="v-proj" role="tabpanel" aria-labelledby="t-proj" hidden>
+  <h2 class="sect">Six projects where RL actually earns its keep</h2>
+  <p class="sect-note">Each of these fails to have a clean analytical controller, so reinforcement
+    learning is the honest tool rather than a heavier substitute for a PID loop. They are ordered
+    roughly by build difficulty, and each one is chosen to break in a <em>different</em> way when
+    you move it to hardware. Start with the first one.</p>
+  <div class="projects" id="projects"></div>
+
+  <div class="callout">
+    <b>Reset burden is the constraint nobody plans for.</b> You will run far more hardware rollouts
+    than you expect while measuring the gap. A task that resets itself (the pendulum falls back to
+    hanging; the fallen robot is already on the floor) lets one student collect fifty trials in an
+    afternoon. A task needing someone to reposition a block every fifteen seconds does not.
+    Weight this at least as heavily as the interesting-ness of the task.
+  </div>
+
+  <div class="callout" style="border-left-color: var(--real);">
+    <b>Check your sensing before committing to a project.</b> SimpleLE's documented surface is motors,
+    colour sensor and controller — orientation and per-motor encoder angles are not part of it. Anything
+    above that wants a heading signal (fall recovery, parking) needs either a gyro exposed through
+    <code>legoeducation</code> directly, or a substitute: dead-reckoned heading from left/right travel,
+    a taped line read with <code>colorSensor.reflection()</code>, or an overhead phone camera.
+    Confirm you can read the signal <em>before</em> designing a task around it.
+  </div>
+</section>
+
+<!-- ============================= ROBOT MODEL ============================= -->
+<section class="panel-view" id="v-model" role="tabpanel" aria-labelledby="t-model" hidden>
+  <h2 class="sect">Getting an MJCF file that describes your robot</h2>
+  <p class="sect-note">MuJoCo needs an MJCF — an XML file listing bodies, joints, masses and collision
+    shapes. Nothing LEGO gives you is that file. Three routes get you there, and they trade automation
+    against how much junk you have to clean up afterwards.</p>
+
+  <div class="routes" id="routes"></div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3>Route A in full — Onshape → MJCF</h3>
+    <p class="hint">The <code>onshape-to-robot</code> exporter reads a top-level Onshape assembly over the
+      API and writes MuJoCo XML directly. This is the route to teach if students are already doing CAD.</p>
+
+    <p class="hint"><b>1.</b> Install the exporter and get Onshape API keys from
+      <code>dev-portal.onshape.com</code>.</p>
+    <div class="code">
+      <button class="copy" data-copy="#o2r-1">Copy</button>
+      <pre id="o2r-1">pip install onshape-to-robot
+
+export ONSHAPE_ACCESS_KEY=your_access_key
+export ONSHAPE_SECRET_KEY=your_secret_key</pre>
+    </div>
+
+    <p class="hint"><b>2.</b> Structure the assembly so the exporter can read it. This is the part that
+      decides whether the export is usable:</p>
+    <ul class="plainlist">
+      <li>It must be a <b>top-level assembly</b>; each instance in it becomes one link.</li>
+      <li>The <b>first instance is the base link</b> — put the chassis first.</li>
+      <li>Mates decide joints: a <b>revolute or cylindrical</b> mate becomes a hinge, a <b>slider</b>
+        becomes a prismatic joint, a <b>fastened</b> mate becomes a fixed joint.</li>
+      <li>Anything you want rigidly joined should be a fastened mate or a sub-assembly, or you will get
+        a model with far more degrees of freedom than your robot has.</li>
+    </ul>
+
+    <p class="hint"><b>3.</b> Write <code>config.json</code> in the robot's folder. The
+      <code>joint_properties</code> block is where you make the motors behave like LEGO motors rather
+      than ideal ones:</p>
+    <div class="code">
+      <button class="copy" data-copy="#o2r-2">Copy</button>
+      <pre id="o2r-2">{
+  "document_id": "<span class="c">paste from your Onshape URL</span>",
+  "output_format": "mujoco",
+  "output_filename": "robot",
+
+  <span class="c">// LEGO motors are weak and springy. Guessing these is the single</span>
+  <span class="c">// biggest source of a policy that works in sim and not on carpet.</span>
+  "joint_properties": {
+    "motor_.*": {
+      "actuated": true,
+      "forcerange": [-0.25, 0.25],
+      "damping": 0.02
+    }
+  },
+  "geom_properties": {
+    ".*": { "friction": [0.9, 0.005, 0.0001] }
+  }
+}</pre>
+    </div>
+
+    <p class="hint"><b>4.</b> Run the export. You get <code>robot.xml</code> (the model, with Onshape
+      frames exported as <code>site</code> tags you can reference in rewards) and <code>scene.xml</code>
+      (a floor and lighting for a quick look).</p>
+    <div class="code">
+      <button class="copy" data-copy="#o2r-3">Copy</button>
+      <pre id="o2r-3">onshape-to-robot robots/my_lego_bot
+python -m mujoco.viewer --mjcf robots/my_lego_bot/scene.xml</pre>
+    </div>
+
+    <div class="verify" style="margin-top:12px;">
+      <b>Worked if</b>
+      <span>The viewer opens, the robot does not explode or sink through the floor, and dragging a
+        joint moves exactly the parts you expect.</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>Whatever route you take, the export is a starting point, not a model.</b> Three things are
+    always wrong on arrival, and all three matter more than the geometry:
+    <ul class="plainlist" style="margin-top:9px;">
+      <li><b>Collision geometry.</b> CAD meshes carry every stud and pin hole. Replace collision geoms
+        with boxes, capsules and cylinders — keep the mesh for visuals only. This is usually a 10–100×
+        speedup and it is not optional at 2048 parallel environments.</li>
+      <li><b>Mass and inertia.</b> Onshape only knows masses if you assigned real materials; LDraw-derived
+        meshes never do. Weigh the actual robot on a kitchen scale and distribute it.</li>
+      <li><b>Actuators.</b> An exported joint is ideal and infinitely strong. Add a real
+        <code>forcerange</code> from a stall test, plus <code>damping</code> and <code>armature</code>,
+        before you believe anything the simulation tells you.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================= TRAIN ============================= -->
+<section class="panel-view" id="v-train" role="tabpanel" aria-labelledby="t-train" hidden>
+  <h2 class="sect">Train, with the hardware's limits baked in from the start</h2>
+  <p class="sect-note">The settings that decide whether a policy transfers are not the PPO
+    hyperparameters — they are the control rate, the action delay, and the randomization ranges.
+    Set those to what your hardware can actually deliver, then tune learning second. These are the
+    handful of knobs worth touching first; <b>Task Anatomy</b> has the full list and where each one lives.</p>
+
+  <div class="callout" style="border-left-color: var(--real); margin-top:0;">
+    <b>20 Hz is a hardware ceiling, not a preference.</b> Nothing is stored on the hub — every sample
+    has to stream to the PC at the rate your code asks for, and Bluetooth LE tops out around 50 ms per
+    update. Train above the rate you can actually hold and the policy learns to depend on reactions the
+    real robot will never make in time.
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <h3>Task and control interface</h3>
+      <p class="hint">Choose the rate you can genuinely hit over the wireless link, not the rate the simulator can run.</p>
+      <div class="grid2">
+        <div class="field">
+          <label for="f-task">Task</label>
+          <select id="f-task">
+            <option value="drive_straight">Drive straight on beams — Mjlab-Lego-DriveStraight</option>
+            <option value="pendulum_swingup">Pendulum swing-up — Mjlab-Lego-Swingup</option>
+            <option value="righting">Fall recovery — Mjlab-Lego-Righting</option>
+            <option value="parking">Non-holonomic parking — Mjlab-Lego-Park</option>
+            <option value="step_climb">Climb a step — Mjlab-Lego-StepClimb</option>
+            <option value="push_pose">Push to pose — Mjlab-Lego-Push</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-hz">Control rate (Hz)</label>
+          <div class="range-row">
+            <input type="range" id="f-hz" min="5" max="20" step="1" value="20">
+            <output id="o-hz">20 Hz</output>
+          </div>
+          <p class="fieldnote" id="hz-note"></p>
+        </div>
+        <div class="field">
+          <label for="f-delay">Action delay randomization (ms)</label>
+          <div class="range-row">
+            <input type="range" id="f-delay" min="0" max="120" step="10" value="40">
+            <output id="o-delay">0–40 ms</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-envs">Parallel environments</label>
+          <input type="number" id="f-envs" value="2048" min="64" max="16384" step="64">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Domain randomization</h3>
+      <p class="hint">Every range here is an admission that you do not know a number. Widen the ones you
+        measured worst — for a LEGO build that is almost always friction and joint stiffness.</p>
+      <div class="grid2">
+        <div class="field">
+          <label for="f-fric">Ground friction ±</label>
+          <div class="range-row">
+            <input type="range" id="f-fric" min="0" max="60" step="5" value="30">
+            <output id="o-fric">±30%</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-stiff">Joint stiffness ±</label>
+          <div class="range-row">
+            <input type="range" id="f-stiff" min="0" max="80" step="5" value="45">
+            <output id="o-stiff">±45%</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-torque">Motor torque scale ±</label>
+          <div class="range-row">
+            <input type="range" id="f-torque" min="0" max="60" step="5" value="25">
+            <output id="o-torque">±25%</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-mass">Link mass ±</label>
+          <div class="range-row">
+            <input type="range" id="f-mass" min="0" max="50" step="5" value="15">
+            <output id="o-mass">±15%</output>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Training command</h3>
+      <p class="hint">Run from your <code style="font-family:var(--mono)">my_mjlab_project</code> checkout with this repo's environment active.</p>
+      <div class="code">
+        <button class="copy" data-copy="#cmd-train">Copy</button>
+        <pre id="cmd-train"></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= TASK ANATOMY ============================= -->
+<section class="panel-view" id="v-anat" role="tabpanel" aria-labelledby="t-anat" hidden>
+  <h2 class="sect">What is actually inside a task, and which parts you may turn</h2>
+  <p class="sect-note">A task is not one file of settings — it is eight managers, each owning a
+    different question. Pick a part to see what it decides, every knob it exposes, and the Python that
+    defines it. If a change you want is not listed under any part here, it probably belongs in the MJCF
+    instead.</p>
+
+  <div class="bench">
+    <nav class="anat-list" id="anat-list" aria-label="Task components"></nav>
+    <div id="anat-detail"></div>
+  </div>
+</section>
+
+<!-- ============================= DEPLOY ============================= -->
+<section class="panel-view" id="v-deploy" role="tabpanel" aria-labelledby="t-deploy" hidden>
+  <h2 class="sect">Run the same policy on the hub — and log it the same way</h2>
+  <p class="sect-note">The bridge below does three things: load the exported policy, step it at the
+    rate you trained for, and write a trajectory CSV whose columns match the one your simulator
+    writes. That last part is what makes the next tab possible, so do not skip it.</p>
+
+  <div class="stack">
+    <div class="card">
+      <h3>Export the policy first</h3>
+      <p class="hint">Strip it to a plain feed-forward network so the bridge has no mjlab or RSL-RL dependency at runtime.</p>
+      <div class="code">
+        <button class="copy" data-copy="#cmd-export">Copy</button>
+        <pre id="cmd-export"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Hardware bridge</h3>
+      <p class="hint">Fill in the observation and action mapping for your build — those two functions are
+        the entire sim-to-real contract, and getting the sign or the units wrong there looks exactly
+        like a training failure.</p>
+      <div class="code">
+        <button class="copy" data-copy="#cmd-bridge">Copy</button>
+        <pre id="cmd-bridge"></pre>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>Record a sim trajectory with the identical logger.</b> Run the same policy in mjlab with
+      logging on, so you have <code>sim_run.csv</code> and <code>real_run.csv</code> with matching
+      columns and timestamps. Comparing runs logged two different ways produces differences that are
+      real but not about physics.
+    </div>
+  </div>
+</section>
+
+<!-- ============================= GAP ============================= -->
+<section class="panel-view" id="v-gap" role="tabpanel" aria-labelledby="t-gap" hidden>
+  <h2 class="sect">Measure the gap, then read what its shape is telling you</h2>
+  <p class="sect-note">Two runs of one policy — one simulated, one on the floor. The interesting part
+    is not that they diverge; they always diverge. It is <em>how</em> they diverge, because each
+    signature points at a different thing you modelled wrong.</p>
+
+  <div class="bench">
+    <div class="stack">
+      <div class="card">
+        <h3>Runs</h3>
+        <p class="hint">Load a pair of CSVs, or explore with the sample run below.</p>
+        <div class="field" style="margin-bottom:11px;">
+          <label for="f-scenario">Sample run</label>
+          <select id="f-scenario">
+            <option value="lag">Wheg gait — real lags sim</option>
+            <option value="drift">Wheg gait — steady one-sided drift</option>
+            <option value="contact">Wheg gait — jumps at footfalls</option>
+            <option value="flex">Wheg gait — real oscillates, sim smooth</option>
+            <option value="tuned">Wheg gait — after randomization</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" id="btn-load">Load CSV pair…</button>
+        </div>
+        <input type="file" id="file-in" accept=".csv" multiple hidden>
+        <p class="hint" style="margin:11px 0 0;font-size:0.78rem;">
+          Expects <code style="font-family:var(--mono)">t,heading_deg</code>. Filenames containing
+          <em>sim</em> and <em>real</em> are matched automatically.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Close the loop</h3>
+        <p class="hint" style="margin-bottom:9px;">The cycle this whole page is built around:</p>
+        <ol class="loop">
+          <li><code>model</code></li>
+          <li><code>train</code></li>
+          <li><code>deploy</code></li>
+          <li><code>measure</code></li>
+          <li><code>widen randomization</code></li>
+          <li><code>re-train</code></li>
+        </ol>
+        <p class="hint" style="margin:12px 0 0;">
+          You are done when the divergence stops shrinking between iterations — not when it reaches
+          zero, which it will not.
+        </p>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h3 class="chart-title">Heading over one 6-second rollout</h3>
+            <p class="chart-sub" id="chart-sub">Same policy, same commanded gait — shaded area is the running divergence.</p>
+          </div>
+          <div class="legend">
+            <span><i class="swatch sim"></i> Simulation</span>
+            <span><i class="swatch real"></i> Hardware</span>
+          </div>
+        </div>
+        <div class="chart-scroll" style="position:relative;" id="chart-host">
+          <svg class="chart" id="chart" viewBox="0 0 700 300" role="img"
+               aria-label="Line chart comparing simulated and measured heading angle over six seconds"></svg>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <details class="tbl">
+          <summary>Show data table</summary>
+          <div style="overflow-x:auto;">
+            <table class="data" id="dtable"></table>
+          </div>
+        </details>
+      </div>
+
+      <div class="diag" id="diag"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ tabs */
+const tabs = [...document.querySelectorAll('.tab-btn')];
+tabs.forEach(btn => btn.addEventListener('click', () => {
+  tabs.forEach(b => {
+    const sel = b === btn;
+    b.setAttribute('aria-selected', String(sel));
+    document.getElementById(b.getAttribute('aria-controls')).hidden = !sel;
+  });
+}));
+
+/* ------------------------------------------------------------------ copy */
+document.addEventListener('click', e => {
+  const b = e.target.closest('.copy');
+  if (!b) return;
+  const txt = document.querySelector(b.dataset.copy).textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const old = b.textContent; b.textContent = 'Copied';
+    setTimeout(() => { b.textContent = old; }, 1200);
+  });
+});
+
+/* ================================================================= SETUP */
+const STEPS = [
+  {
+    n: 1, where: 'sim', title: 'Install the simulator',
+    body: `<p>mjlab, MuJoCo and the Warp backend are pinned together in this repo's
+           <code>pyproject.toml</code>. Let <code>uv</code> resolve them rather than installing by hand —
+           the pins exist because newer patch releases have broken multi-environment resets before.</p>`,
+    code: `cd Simulations\nuv sync\nuv run python -c "import mjlab, mujoco; print(mjlab.__version__, mujoco.__version__)"`,
+    verify: 'Prints two version numbers with no import errors.'
+  },
+  {
+    n: 2, where: 'real', title: 'Install the LEGO control library',
+    body: `<p>The hub is driven from your laptop over Bluetooth. Install <code>legoeducation</code>, then
+           add <a href="https://github.com/chrisbuerginrogers/SimpleLE" target="_blank" rel="noopener">SimpleLE</a>
+           on top of it — copy <code>lelib.py</code> into your project folder. SimpleLE is what the rest of
+           this page uses, because it gives you the one control that matters here: an explicit update rate.</p>
+           <p>This is a separate concern from the simulator and can live in its own environment — the two
+           only ever exchange an exported policy file.</p>`,
+    code: `pip install legoeducation matplotlib\n\n<span class="c"># then copy lelib.py from the SimpleLE repo next to your script</span>\npython -c "from lelib import doubleMotor; print('SimpleLE ready')"`,
+    verify: 'Prints "SimpleLE ready". If the import fails here, nothing downstream will work.'
+  },
+  {
+    n: 3, where: 'real', title: 'Pair the hub, set the rate, move the motors',
+    body: `<p>Prove the round trip end to end before any policy is involved. The
+           <code>set_update_rate()</code> call is the important line — it sets how often the hub reports
+           back, in milliseconds, and <b>nothing is stored on the hub</b>, so that rate is also your data
+           rate and your control rate.</p>
+           <p>Valid range is 15–1000 ms, but Bluetooth LE is the real limit: about <b>50 ms, or 20 Hz</b>.
+           Asking for less gets you dropped packets, not faster data.</p>`,
+    code: `<span class="c"># connect, set the stream rate, drive both motors briefly</span>\nimport time\nfrom lelib import doubleMotor\n\nSERIAL = 1234                 <span class="c"># your Bluetooth card serial number</span>\n\ndm = doubleMotor()\ndm.connect(SERIAL)\ndm.set_update_rate(50)        <span class="c"># 50 ms = 20 Hz = the practical BLE ceiling</span>\n\ndm.set_speed(40)\ndm.run_time(1500)             <span class="c"># run both motors for 1.5 s</span>\ndm.stop()`,
+    verify: 'Both motors run for about a second and a half and stop. Time the loop yourself — if you cannot hold 20 Hz, train at the rate you can hold.'
+  },
+  {
+    n: 4, where: 'sim', title: 'Smoke-test training on a stock task',
+    body: `<p>Run a handful of iterations of something already known to work before pointing the
+           trainer at your own robot. This separates "my environment is broken" from "my task is
+           broken", which is the single most common time sink in this whole pipeline.</p>`,
+    code: `<span class="c"># from your my_mjlab_project checkout</span>\nuv run train --task Mjlab-UR3e-Reach --num_envs 256 --max_iterations 5`,
+    verify: 'Reward numbers print and increase. No CUDA, Warp, or IndexError traces.'
+  },
+  {
+    n: 5, where: 'both', title: 'Log one open-loop trajectory in both worlds',
+    body: `<p>This is the step people skip and the step that predicts success. Command the <em>same</em>
+           fixed open-loop motion — no policy involved — in simulation and on the hardware, log both,
+           and compare. If those two curves already disagree wildly, your model is wrong and no
+           amount of training will rescue it.</p>`,
+    code: `<span class="c"># same script, two backends, identical CSV columns</span>\npython rollout.py --backend sim  --script straight_6s --out sim_run.csv\npython rollout.py --backend hub  --script straight_6s --out real_run.csv`,
+    verify: 'Two CSVs with matching columns. Drop them into the Measure the Gap tab.'
+  }
+];
+
+document.getElementById('steps').innerHTML = STEPS.map(s => `
+  <li class="step" id="step-${s.n}">
+    <div class="step-head" role="button" tabindex="0" aria-expanded="false">
+      <span class="step-num">${s.n}</span>
+      <span class="step-title">${s.title}</span>
+      <span class="step-where ${s.where}">${s.where === 'both' ? 'sim + hardware' : s.where === 'sim' ? 'simulation' : 'hardware'}</span>
+    </div>
+    <div class="step-body">
+      ${s.body}
+      <div class="code"><button class="copy" data-copy="#code-${s.n}">Copy</button><pre id="code-${s.n}">${s.code}</pre></div>
+      <div class="verify"><b>Worked if</b><span>${s.verify}</span></div>
+    </div>
+  </li>`).join('');
+
+document.querySelectorAll('.step-head').forEach(h => {
+  const toggle = () => {
+    const li = h.closest('.step');
+    const open = li.classList.toggle('open');
+    li.classList.toggle('done', open);
+    h.setAttribute('aria-expanded', String(open));
+  };
+  h.addEventListener('click', toggle);
+  h.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+});
+document.querySelector('#step-1 .step-head').click();
+
+/* ============================================================== PROJECTS */
+const PROJECTS = [
+  {
+    title: 'Drive straight on beams',
+    diff: 'start here',
+    badge: true,
+    why: `Two motors with plain beams bolted on instead of wheels. The robot does not roll — it
+          <b>lurches</b>, one discrete contact impulse per beam strike, and the two sides never strike
+          symmetrically. There is no differential-drive model to invert, so "go straight" becomes a
+          coordination problem between two limbs that are each only intermittently touching the ground.`,
+    sense: 'Motor encoders for phase. Lateral error is easiest to measure off-robot at first — a tape measure at the end of the run, or an overhead phone video.',
+    reset: 2,
+    resetTxt: 'Manual but trivial — carry it back to the start line.',
+    lesson: 'Everything at once, in miniature — contact timing, left/right asymmetry and beam flex all show up in the very first run. That is exactly why it is the right first activity: the gap is large, obvious, and traceable to causes students can see.'
+  },
+  {
+    title: 'Rotary pendulum swing-up',
+    diff: 'build: easy',
+    why: `A linear controller can <b>catch</b> the pendulum at the top but cannot <b>get it there</b> —
+          swing-up needs energy pumping over several non-linear strokes, which is exactly where a
+          learned policy beats a hand-derived law.`,
+    sense: 'Driven motor encoder, plus a second unpowered motor used purely as a free-joint angle sensor.',
+    reset: 1,
+    resetTxt: 'Automatic — it falls back to hanging.',
+    lesson: 'Motor torque curve and gear backlash. Swing-up amplitude is brutally sensitive to torque scale, so a 20% model error shows up as a policy that never quite makes it over the top.'
+  },
+  {
+    title: 'Fall recovery / self-righting',
+    diff: 'build: easy',
+    why: `Getting up is a <b>sequence of contact changes</b> — which face is down determines what to do
+          next, and the transitions are discontinuous. There is no smooth control law across them.`,
+    sense: 'Orientation and angular rate, which SimpleLE does not expose — you will need a gyro via legoeducation directly, or an overhead video.',
+    reset: 1,
+    resetTxt: 'Automatic — it starts on the floor by definition.',
+    lesson: 'Contact solver settings and inertia distribution. Simulated contacts are stiffer and more forgiving than a plastic shell on carpet, so policies learn flips the real robot cannot complete.'
+  },
+  {
+    title: 'Non-holonomic parking',
+    diff: 'build: easy',
+    why: `A classical result (Brockett) says <b>no smooth time-invariant feedback law exists</b> for this
+          problem. Students meet a task where the obvious approach is provably impossible, not merely hard.`,
+    sense: 'Dead-reckoned odometry from left/right motor travel, plus a heading source. Confirm you can read heading before starting.',
+    reset: 2,
+    resetTxt: 'Semi-automatic — drive back out to a start pose.',
+    lesson: 'State estimation, not dynamics. The physics model is nearly right; wheel slip corrupts the odometry the policy depends on, so error accumulates in the observation rather than the plant.'
+  },
+  {
+    title: 'Climb a step on beams',
+    diff: 'build: medium',
+    why: `The graduate version of the first activity. Getting a beam-driven robot up a 2 cm lip needs a
+          <b>deliberate gait</b> — load one side, catch the edge, then drive through — and the timing
+          window is far too tight to hand-tune.`,
+    sense: 'Motor encoders and phase. A downward distance sensor helps detect the lip.',
+    reset: 3,
+    resetTxt: 'Manual — reposition in front of the step each trial.',
+    lesson: 'Structural compliance, unavoidably. Beams flex and pin joints have slop, and a rigid-body simulator represents neither — at a step edge this stops being a perturbation and starts deciding whether the climb succeeds.'
+  },
+  {
+    title: 'Push an object to a target pose',
+    diff: 'build: medium',
+    why: `Non-prehensile manipulation. Where the object goes depends on friction, contact point and
+          object inertia in a way with <b>no closed-form inverse</b> — you cannot solve for the push, only search for it.`,
+    sense: 'Overhead webcam with a fiducial marker on the object. This adds a perception stage.',
+    reset: 4,
+    resetTxt: 'Manual and frequent — reposition the object every trial.',
+    lesson: 'Friction is genuinely unknowable. Table friction varies across the surface and with dust, so the lesson is that some parameters must be randomized over rather than measured.'
+  }
+];
+
+document.getElementById('projects').innerHTML = PROJECTS.map(p => `
+  <article class="proj${p.badge ? ' lead' : ''}">
+    <div class="proj-top">
+      <h3>${p.title}</h3>
+      <span class="diff${p.badge ? ' badge' : ''}">${p.diff}</span>
+    </div>
+    <p class="why">${p.why}</p>
+    <dl>
+      <dt>Sensing</dt><dd>${p.sense}</dd>
+      <dt>Resets</dt>
+      <dd>
+        <span class="reset-meter" title="${p.resetTxt}">
+          ${[1,2,3,4].map(i => `<i class="${i <= p.reset ? 'on' : ''}"></i>`).join('')}
+        </span>
+        ${p.resetTxt}
+      </dd>
+    </dl>
+    <div class="gap-lesson"><b>Sim-to-real lesson</b>${p.lesson}</div>
+  </article>`).join('');
+
+/* =========================================================== ROBOT MODEL */
+const ROUTES = [
+  {
+    rec: true,
+    tag: 'recommended',
+    title: 'A · Onshape → onshape-to-robot',
+    p: 'Model the robot in Onshape, mate it the way it actually moves, and let the exporter walk the assembly over the API and write MuJoCo XML directly.',
+    pros: ['Joints come from your mates, so the kinematics are right by construction',
+           'Masses and inertias come from CAD if you assigned materials',
+           'Re-export after a build change instead of re-deriving by hand'],
+    cons: ['Needs Onshape API keys and a disciplined assembly structure',
+           'Collision meshes still need replacing with primitives'],
+    verdict: 'Best if students are doing CAD anyway. The re-export loop is what makes it worth the setup.'
+  },
+  {
+    tag: 'faithful but inert',
+    title: 'B · BrickLink Studio → mesh → MJCF',
+    p: 'Export the Studio build to LDraw, convert to STL or OBJ with LDView or the Blender LDraw importer, then assemble an MJCF around the meshes by hand.',
+    pros: ['The model looks exactly like the thing on the table',
+           'Works from a build students already made brick by brick'],
+    cons: ['Gives you geometry only — no joints, no masses, no actuators',
+           'Stud-level meshes are hostile to the collision solver',
+           'Every moving part must be split out and re-parented by hand'],
+    verdict: 'Use the render for the report, not the physics. Almost always slower than route C.'
+  },
+  {
+    tag: 'fastest to trainable',
+    title: 'C · Ruler and a text editor',
+    p: 'Measure the real robot, then write thirty lines of MJCF from boxes and cylinders. Use the CAD, if you have it, purely as a dimension reference.',
+    pros: ['A beam-driving robot is about four bodies — quicker to write than a pipeline is to debug',
+           'Primitive collisions are fast enough for thousands of parallel environments',
+           'You understand every number, so you know which one to suspect later'],
+    cons: ['Manual re-measurement whenever the build changes',
+           'Easy to be sloppy about mass distribution'],
+    verdict: 'The right default for the first activity, and the fastest way to a policy on hardware.'
+  }
+];
+
+document.getElementById('routes').innerHTML = ROUTES.map(r => `
+  <article class="route${r.rec ? ' rec' : ''}">
+    <span class="tagline">${r.tag}</span>
+    <h3>${r.title}</h3>
+    <p>${r.p}</p>
+    <ul>${r.pros.map(x => `<li>${x}</li>`).join('')}</ul>
+    <ul style="list-style:'– ';">${r.cons.map(x => `<li>${x}</li>`).join('')}</ul>
+    <p class="verdict">${r.verdict}</p>
+  </article>`).join('');
+
+/* ================================================================= TRAIN */
+const TASK_IDS = {
+  drive_straight: 'Mjlab-Lego-DriveStraight',
+  pendulum_swingup: 'Mjlab-Lego-Swingup',
+  righting: 'Mjlab-Lego-Righting',
+  parking: 'Mjlab-Lego-Park',
+  step_climb: 'Mjlab-Lego-StepClimb',
+  push_pose: 'Mjlab-Lego-Push'
+};
+const $ = id => document.getElementById(id);
+const trainInputs = ['f-task','f-hz','f-delay','f-envs','f-fric','f-stiff','f-torque','f-mass'].map($);
+
+function renderTrain() {
+  const hz = +$('f-hz').value, delay = +$('f-delay').value;
+  $('o-hz').textContent = hz + ' Hz';
+  // Bluetooth LE is the hard ceiling here, not the simulator and not the hub.
+  const ms = Math.round(1000 / hz);
+  $('hz-note').innerHTML = hz >= 20
+    ? `At the BLE ceiling — <code>set_update_rate(${ms})</code>. Nothing faster arrives reliably.`
+    : `<code>set_update_rate(${ms})</code>. Slower is safer over a noisy link.`;
+  $('o-delay').textContent = '0–' + delay + ' ms';
+  $('o-fric').textContent = '±' + $('f-fric').value + '%';
+  $('o-stiff').textContent = '±' + $('f-stiff').value + '%';
+  $('o-torque').textContent = '±' + $('f-torque').value + '%';
+  $('o-mass').textContent = '±' + $('f-mass').value + '%';
+
+  const task = TASK_IDS[$('f-task').value];
+  const f = v => (1 - v / 100).toFixed(2) + ' ' + (1 + v / 100).toFixed(2);
+  const steps = Math.max(1, Math.round((1 / hz) / 0.002));
+
+  $('cmd-train').innerHTML =
+`<span class="c"># control rate ${hz} Hz -> decimation ${steps} at a 2 ms physics step</span>
+uv run train --task ${task} \\
+  --num_envs ${$('f-envs').value} \\
+  --max_iterations 3000 \\
+  env.decimation=${steps} \\
+  env.action_delay_ms="0 ${delay}" \\
+  <span class="c"># every range below is a parameter you could not measure confidently</span>
+  env.randomize.ground_friction="${f(+$('f-fric').value)}" \\
+  env.randomize.joint_stiffness="${f(+$('f-stiff').value)}" \\
+  env.randomize.torque_scale="${f(+$('f-torque').value)}" \\
+  env.randomize.link_mass="${f(+$('f-mass').value)}"`;
+
+  $('cmd-export').innerHTML =
+`uv run play --task ${task} --checkpoint latest --export_policy \\
+  --out policy_${$('f-task').value}.pt
+
+<span class="c"># leaves a plain torch module: obs -> action, no mjlab import needed</span>`;
+
+  $('cmd-bridge').innerHTML =
+`<span class="c"># bridge.py — runs the trained policy on the hub and logs a trajectory.</span>
+<span class="c"># Uses SimpleLE (lelib.py) on top of legoeducation.</span>
+import csv, time
+import torch
+from lelib import doubleMotor, colorSensor
+
+SERIAL     = 1234              <span class="c"># your Bluetooth card serial number</span>
+HZ         = ${hz}
+UPDATE_MS  = ${ms}                <span class="c"># 1000 / ${hz} Hz — the hub reports at this rate</span>
+DT         = 1.0 / HZ
+DURATION   = 6.0
+
+POLICY = torch.jit.load("policy_${$('f-task').value}.pt").eval()
+
+dm = doubleMotor()
+dm.connect(SERIAL)
+<span class="c"># Nothing is stored on the hub — every sample streams to the PC at this</span>
+<span class="c"># rate. Ask for faster than the link supports and you get dropped packets,</span>
+<span class="c"># not faster data. 50 ms is about the floor over BLE.</span>
+dm.set_update_rate(UPDATE_MS)
+
+def observe():
+    <span class="c"># TODO: must match your task's observation term-for-term, in the same</span>
+    <span class="c"># order and the same units. Degrees here against radians in sim is the</span>
+    <span class="c"># single most common cause of "trained fine, failed on hardware".</span>
+    <span class="c">#</span>
+    <span class="c"># For the first activity you can start fully open-loop (a constant</span>
+    <span class="c"># observation) and still learn a great deal from the gap — measure the</span>
+    <span class="c"># lateral error with a tape measure at the end of the run.</span>
+    return torch.zeros(OBS_DIM, dtype=torch.float32)
+
+def act(a):
+    <span class="c"># Policy outputs are normalized to [-1, 1]; SimpleLE speeds are percent.</span>
+    left, right = a.tolist()[:2]
+    dm.set_speed_left(int(max(-100, min(100, left  * 100))))
+    dm.set_speed_right(int(max(-100, min(100, right * 100))))
+    dm.run()
+
+OBS_DIM = ${$('f-task').value === 'drive_straight' ? 6 : 8}
+
+def heading_estimate():
+    <span class="c"># TODO: SimpleLE's documented surface is motors, colour sensor and</span>
+    <span class="c"># controller — there is no heading getter to call here. Pick one:</span>
+    <span class="c">#   a) drop to legoeducation directly if your hub exposes a gyro</span>
+    <span class="c">#   b) integrate left/right wheel-equivalent travel into a heading</span>
+    <span class="c">#   c) run the rollout over a taped line and use colorSensor.reflection()</span>
+    <span class="c">#      as a lateral-error proxy (0-255)</span>
+    <span class="c"># For activity 1, (c) is the least work and teaches the most.</span>
+    return 0.0
+
+with open("real_run.csv", "w", newline="") as fh:
+    w = csv.writer(fh); w.writerow(["t", "heading_deg"])
+    t0 = time.perf_counter()
+    try:
+        while (t := time.perf_counter() - t0) < DURATION:
+            with torch.no_grad():
+                act(POLICY(observe()))
+            <span class="c"># TODO: log the same quantity your sim logger writes, or the two</span>
+            <span class="c"># runs are not comparable on the Measure the Gap tab.</span>
+            w.writerow([f"{t:.3f}", f"{heading_estimate():.2f}"])
+            <span class="c"># hold the loop to the trained rate, not as fast as it will run</span>
+            time.sleep(max(0.0, DT - ((time.perf_counter() - t0) - t)))
+    finally:
+        dm.stop()`;
+}
+trainInputs.forEach(el => el.addEventListener('input', renderTrain));
+renderTrain();
+
+/* ========================================================= TASK ANATOMY */
+const ANATOMY = [
+  {
+    name: 'Scene', q: 'What exists in the world?',
+    d: `Every body the simulator knows about: your robot, the ground, and whatever the task needs the
+        robot to interact with. Also how many copies run in parallel — the single biggest lever on
+        wall-clock training time.`,
+    knobs: [
+      ['num_envs', '2048', 'Parallel copies. Raise until the GPU is full; lower to debug.'],
+      ['env_spacing', '2.5', 'Metres between copies. Too small and neighbours collide.'],
+      ['robot.spawn.pos', '(0, 0, 0.04)', 'Spawn height. Too low and the robot starts inside the floor.'],
+      ['ground.friction', '(0.9, 0.005, 0.0001)', 'Sliding, torsional, rolling. The first number dominates.']
+    ],
+    py: `@configclass
+class LegoSceneCfg(InteractiveSceneCfg):
+    num_envs    = 2048
+    env_spacing = 2.5
+
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=GroundPlaneCfg(friction=(0.9, 0.005, 0.0001)),
+    )
+    robot = ArticulationCfg(
+        prim_path="{ENV_REGEX_NS}/Robot",
+        spawn=UsdFileCfg(usd_path=f"{ASSETS}/lego_beambot.xml"),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, 0.04),
+            joint_pos={"motor_left": 0.0, "motor_right": 0.0},
+        ),
+    )`
+  },
+  {
+    name: 'Observations', q: 'What does the policy see?',
+    d: `The vector fed to the network every control step. This is the contract your hardware bridge has
+        to reproduce exactly — same terms, same order, same units. Add noise here deliberately: a policy
+        trained on clean observations will not survive a real sensor.`,
+    knobs: [
+      ['ObsTerm(func=…)', '—', 'One row of the vector. Order here is order in the tensor.'],
+      ['noise', 'Unoise(-0.01, 0.01)', 'Per-term sensor noise. Match your real sensor, then widen.'],
+      ['scale', '1.0', 'Normalization. Keep every term roughly in [-1, 1].'],
+      ['history_length', '0', 'Stack past frames. Raise if the task needs velocity the sensor cannot give.']
+    ],
+    py: `@configclass
+class ObservationsCfg:
+    @configclass
+    class PolicyCfg(ObsGroup):
+        # 6-dim for drive-straight: 2 joint pos, 2 joint vel, heading, heading rate
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel,
+                            noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel,
+                            noise=Unoise(n_min=-0.5, n_max=0.5))
+        heading   = ObsTerm(func=mdp.base_heading,
+                            noise=Unoise(n_min=-0.02, n_max=0.02))
+        heading_rate = ObsTerm(func=mdp.base_ang_vel_z)
+
+        def __post_init__(self):
+            self.enable_corruption = True   # noise off -> brittle policy
+            self.concatenate_terms = True
+
+    policy: PolicyCfg = PolicyCfg()`
+  },
+  {
+    name: 'Actions', q: 'What may the policy command?',
+    d: `How network outputs become motor commands. <code>scale</code> is the knob students get wrong most
+        often: too large and the policy thrashes the hardware, too small and it can never correct a
+        disturbance.`,
+    knobs: [
+      ['joint_names', '["motor_.*"]', 'Which joints the policy drives. Regex.'],
+      ['scale', '0.5', 'Multiplies the network output. Start small and raise.'],
+      ['use_default_offset', 'True', 'Actions are deltas from the home pose, not absolute targets.'],
+      ['clip', '(-1.0, 1.0)', 'Hard limit. Should mirror the real range of your motor.']
+    ],
+    py: `@configclass
+class ActionsCfg:
+    # velocity control suits beams better than position control:
+    # you care about how fast each side turns, not where it stops
+    drive = mdp.JointVelocityActionCfg(
+        asset_name="robot",
+        joint_names=["motor_left", "motor_right"],
+        scale=0.5,
+        use_default_offset=True,
+    )`
+  },
+  {
+    name: 'Rewards', q: 'What counts as doing well?',
+    d: `A weighted sum of terms, evaluated every step. Weights are the main thing you will tune, and the
+        usual failure is a policy that satisfies your reward exactly while doing something useless —
+        which means the reward, not the policy, was wrong.`,
+    knobs: [
+      ['weight', '2.0 / -0.1', 'Positive rewards, negative penalises. Relative size is what matters.'],
+      ['params', '{"std": 0.1}', 'Shaping width for exponential kernels. Smaller = pickier.'],
+      ['func', '—', 'Any function of the env returning one scalar per environment.']
+    ],
+    py: `@configclass
+class RewardsCfg:
+    # go forward
+    forward = RewTerm(func=mdp.base_lin_vel_x, weight=2.0)
+
+    # ... but straight: penalise sideways drift and turning
+    lateral = RewTerm(func=mdp.base_lin_vel_y_l2,  weight=-1.5)
+    yaw     = RewTerm(func=mdp.base_ang_vel_z_l2,  weight=-0.8)
+
+    # keep it survivable on real hardware
+    effort  = RewTerm(func=mdp.joint_torques_l2,   weight=-0.0005)
+    smooth  = RewTerm(func=mdp.action_rate_l2,     weight=-0.01)
+    upright = RewTerm(func=mdp.flat_orientation_l2, weight=-0.5)`
+  },
+  {
+    name: 'Terminations', q: 'When does an episode stop?',
+    d: `Episodes end on timeout or on failure. Termination shapes learning as strongly as reward does:
+        ending an episode early is a strong implicit penalty, so a too-eager termination can stop the
+        policy from ever discovering the behaviour you want.`,
+    knobs: [
+      ['episode_length_s', '6.0', 'Match the rollout length you can actually run on hardware.'],
+      ['time_out=True', '—', 'Marks a termination as "not a failure" for bootstrapping. Get this right.'],
+      ['limit_angle', '0.7 rad', 'Tipped-over threshold.']
+    ],
+    py: `@configclass
+class TerminationsCfg:
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+
+    # tipped over — a real failure, not a timeout
+    fell = DoneTerm(
+        func=mdp.bad_orientation,
+        params={"limit_angle": 0.7},
+    )`
+  },
+  {
+    name: 'Events', q: 'What is randomized, and when?',
+    d: `Domain randomization lives here. This is the tab that decides whether the policy survives contact
+        with reality: each range is a parameter you could not measure, and the policy is forced to work
+        across all of them rather than exploiting one value.`,
+    knobs: [
+      ['mode="startup"', '—', 'Applied once when the sim is built. Use for masses and geometry.'],
+      ['mode="reset"', '—', 'Re-rolled every episode. Use for friction and initial pose.'],
+      ['mode="interval"', '—', 'Applied mid-episode. Use for push disturbances.'],
+      ['*_distribution_params', '(0.7, 1.3)', 'The range itself. Widen what you measured worst.']
+    ],
+    py: `@configclass
+class EventsCfg:
+    # friction is genuinely unknowable — randomize, do not measure
+    friction = EventTerm(
+        func=mdp.randomize_rigid_body_material,
+        mode="reset",
+        params={"static_friction_range": (0.6, 1.2),
+                "dynamic_friction_range": (0.5, 1.0)},
+    )
+    # LEGO motors vary part to part, and weaken as the battery drains
+    torque = EventTerm(
+        func=mdp.randomize_actuator_gains,
+        mode="reset",
+        params={"effort_limit_distribution_params": (0.75, 1.25)},
+    )
+    # stands in for beam flex, which a rigid model cannot represent
+    stiffness = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="startup",
+        params={"damping_distribution_params": (0.55, 1.45)},
+    )`
+  },
+  {
+    name: 'Simulation', q: 'How is the physics stepped?',
+    d: `Physics timestep, how many physics steps happen per policy step, and which integrator runs.
+        <code>decimation</code> is where your Bluetooth ceiling turns into a number: at a 2 ms physics
+        step, 20 Hz control means 25.`,
+    knobs: [
+      ['dt', '0.002', 'Physics step. Lower for stiff contacts, at a linear cost.'],
+      ['decimation', '25', 'Physics steps per policy step. dt x decimation = control period.'],
+      ['integrator', 'implicitfast', 'Set in Python, not the XML — the XML value is silently discarded.'],
+      ['solver iterations', '10', 'Raise if contacts feel spongy or bodies interpenetrate.']
+    ],
+    py: `@configclass
+class LegoDriveStraightEnvCfg(ManagerBasedRlEnvCfg):
+    sim = SimulationCfg(
+        dt=0.002,
+        # NOTE: an <option integrator="..."> in the MJCF is dropped during
+        # mocap auto-attach. Setting it here is the only thing that takes.
+        mujoco=MujocoCfg(integrator="implicitfast", iterations=10),
+    )
+
+    def __post_init__(self):
+        self.decimation        = 25    # 0.002 x 25 = 50 ms = 20 Hz
+        self.episode_length_s  = 6.0`
+  },
+  {
+    name: 'PPO runner', q: 'How does learning proceed?',
+    d: `The RSL-RL side: network shape and the optimiser. Tune this <em>last</em>. When a policy fails to
+        transfer, the cause is almost never here — it is in Events, Actions or the model itself.`,
+    knobs: [
+      ['actor_hidden_dims', '[64, 64]', 'Keep it small enough to run on a laptop at 20 Hz.'],
+      ['learning_rate', '1.0e-3', 'Adaptive schedule usually beats hand-tuning this.'],
+      ['entropy_coef', '0.005', 'Raise if the policy commits too early to a bad gait.'],
+      ['gamma', '0.99', 'Discount. Lower it for short, reactive episodes.'],
+      ['num_steps_per_env', '24', 'Rollout length per update.']
+    ],
+    py: `def lego_drive_straight_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+    return RslRlOnPolicyRunnerCfg(
+        num_steps_per_env=24,
+        max_iterations=3000,
+        policy=RslRlPpoActorCriticCfg(
+            # small on purpose: this has to run at 20 Hz on a student laptop
+            actor_hidden_dims=[64, 64],
+            critic_hidden_dims=[64, 64],
+            activation="elu",
+        ),
+        algorithm=RslRlPpoAlgorithmCfg(
+            learning_rate=1.0e-3,
+            entropy_coef=0.005,
+            gamma=0.99,
+            lam=0.95,
+        ),
+    )`
+  }
+];
+
+let anatSel = 0;
+function renderAnat() {
+  document.getElementById('anat-list').innerHTML = ANATOMY.map((a, i) => `
+    <button class="anat-btn" aria-current="${i === anatSel}" data-i="${i}">
+      <span class="ix">${String(i + 1).padStart(2, '0')}</span>
+      <span>${a.name}</span>
+    </button>`).join('');
+
+  const a = ANATOMY[anatSel];
+  document.getElementById('anat-detail').innerHTML = `
+    <div class="card">
+      <h3>${a.name}</h3>
+      <p class="hint" style="margin-bottom:10px;"><b>${a.q}</b> ${a.d}</p>
+      <table class="knobs">
+        <thead><tr><th>Knob</th><th>Typical</th><th>What it changes</th></tr></thead>
+        <tbody>${a.knobs.map(k => `<tr><td>${k[0]}</td><td><em>${k[1]}</em></td><td>${k[2]}</td></tr>`).join('')}</tbody>
+      </table>
+      <div class="code">
+        <button class="copy" data-copy="#anat-py">Copy</button>
+        <pre id="anat-py">${a.py.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>
+      </div>
+    </div>`;
+}
+document.getElementById('anat-list').addEventListener('click', e => {
+  const b = e.target.closest('.anat-btn');
+  if (!b) return;
+  anatSel = +b.dataset.i;
+  renderAnat();
+});
+renderAnat();
+
+/* =================================================================== GAP */
+/* Sample runs. Deterministic and physically plausible: heading (deg) over a
+   6 s rollout of a wheg gait commanded to drive straight. Each scenario is a
+   different failure signature, which is the whole point of the tab.        */
+const N = 61, T_END = 6;
+function makeRun(kind) {
+  const t = [], sim = [], real = [];
+  for (let i = 0; i < N; i++) {
+    const x = i * T_END / (N - 1);
+    t.push(x);
+    // simulated gait: small bounded yaw wobble at the stride frequency
+    const s = 1.9 * Math.sin(2 * Math.PI * 1.5 * x) * Math.exp(-0.05 * x);
+    sim.push(s);
+    let r;
+    switch (kind) {
+      case 'lag':     // same shape, arriving late — actuator too strong in model
+        r = 1.9 * Math.sin(2 * Math.PI * 1.5 * (x - 0.28)) * Math.exp(-0.05 * x) * 0.82; break;
+      case 'drift':   // steady one-sided accumulation — unmodelled asymmetry
+        r = s + 3.4 * x - 0.15 * x * x; break;
+      case 'contact': // matches, then steps at each footfall — contact params
+        r = s + 2.2 * Math.floor(x * 1.5) * (1 + 0.12 * Math.sin(x)); break;
+      case 'flex':    // extra high-frequency ringing — structural compliance
+        r = s + 4.6 * Math.sin(2 * Math.PI * 6.2 * x) * (0.35 + 0.11 * x); break;
+      case 'tuned':   // after widening randomization — bounded, non-growing
+        r = s + 1.5 * Math.sin(2 * Math.PI * 1.55 * x + 0.4) + 0.5; break;
+    }
+    real.push(r);
+  }
+  return { t, sim, real };
+}
+
+const SCENARIO_NOTE = {
+  lag:     'Same policy, same commanded gait — shaded area is the running divergence.',
+  drift:   'Robot veers consistently to one side while the simulation tracks straight.',
+  contact: 'Agreement holds between footfalls and breaks at each one.',
+  flex:    'Hardware carries an oscillation at roughly four times the stride frequency.',
+  tuned:   'After widening friction and stiffness ranges and re-training.'
+};
+
+const DIAGNOSTICS = [
+  {
+    id: 'lag', name: 'Real lags simulation, same shape',
+    sig: 'peaks aligned but shifted late · amplitude scaled down',
+    fix: 'Your model\'s actuator is stronger than the motor. <b>Re-identify the torque constant</b> from a stall test, add a realistic <code>forcerange</code>, and widen the torque-scale randomization.'
+  },
+  {
+    id: 'drift', name: 'Steady one-sided drift',
+    sig: 'divergence grows roughly linearly · no contact-linked structure',
+    fix: 'An asymmetry you did not model — offset centre of mass, one weaker motor, or uneven wheel friction. <b>Measure it, then randomize left/right gain independently</b> so the policy stops relying on symmetry.'
+  },
+  {
+    id: 'contact', name: 'Jumps at footfalls',
+    sig: 'flat agreement between events · step change at each ground contact',
+    fix: 'Contact parameters. Simulated contacts are too stiff or too grippy. <b>Soften <code>solref</code>/<code>solimp</code></b> and randomize friction widely — this is the hardest one to model your way out of.'
+  },
+  {
+    id: 'flex', name: 'Hardware oscillates, simulation is smooth',
+    sig: 'extra high-frequency content only in the measured run',
+    fix: 'Structural compliance — beams flexing, pins with slop. <b>Stiffen the build</b> (triangulate, shorten lever arms) before trying to model it. Changing the robot is cheaper than adding tendons to the model.'
+  },
+  {
+    id: 'tuned', name: 'Bounded divergence, not growing',
+    sig: 'error stays within a band · no accumulating trend',
+    fix: 'This is what success looks like. The two worlds still differ, but the policy is <b>robust to the difference</b> rather than depending on the model being right. Stop here.'
+  }
+];
+
+let RUN = makeRun('lag');
+let CURRENT = 'lag';
+
+const W = 700, H = 300, M = { t: 18, r: 74, b: 34, l: 42 };
+const PW = W - M.l - M.r, PH = H - M.t - M.b;
+
+function draw() {
+  const { t, sim, real } = RUN;
+  const n = t.length;                    // derived from the run, not a constant —
+  const tEnd = t[n - 1] || 1;            // a loaded CSV can be any length or duration
+  const all = sim.concat(real);
+  let lo = Math.min(...all), hi = Math.max(...all);
+  const pad = (hi - lo) * 0.12 || 1;
+  lo -= pad; hi += pad;
+
+  const X = v => M.l + (v / tEnd) * PW;
+  const Y = v => M.t + PH - ((v - lo) / (hi - lo)) * PH;
+
+  const ticks = 5;
+  // narrow ranges need a decimal, and -0 must never reach the axis
+  const dp = (hi - lo) < 12 ? 1 : 0;
+  const fmt = v => { const s = v.toFixed(dp); return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s; };
+  let g = '';
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + (hi - lo) * i / ticks, y = Y(v);
+    g += `<line class="grid-line" x1="${M.l}" y1="${y.toFixed(1)}" x2="${M.l + PW}" y2="${y.toFixed(1)}"/>`;
+    g += `<text class="axis-text" x="${M.l - 8}" y="${(y + 3.5).toFixed(1)}" text-anchor="end">${fmt(v)}</text>`;
+  }
+  const tickStep = tEnd / 6;
+  for (let i = 0; i <= 6; i++) {
+    const s = i * tickStep;
+    g += `<text class="axis-text" x="${X(s).toFixed(1)}" y="${H - 12}" text-anchor="middle">${s.toFixed(s < 10 ? 1 : 0)}s</text>`;
+  }
+
+  // divergence band between the two series
+  const band = t.map((x, i) => `${X(x).toFixed(1)},${Y(sim[i]).toFixed(1)}`).join(' ') + ' ' +
+               t.map((x, i) => `${X(x).toFixed(1)},${Y(real[i]).toFixed(1)}`).reverse().join(' ');
+
+  const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${X(t[i]).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+
+  const lastSim = Y(sim[n - 1]), lastReal = Y(real[n - 1]);
+  const sep = Math.abs(lastSim - lastReal) < 13;
+  const simLabelY = sep ? lastSim - 6 : lastSim + 3.5;
+  const realLabelY = sep ? lastReal + 13 : lastReal + 3.5;
+
+  document.getElementById('chart').innerHTML = `
+    <g>${g}</g>
+    <polygon class="band" points="${band}"/>
+    <path class="series-line" d="${path(sim)}"  stroke="var(--sim)"/>
+    <path class="series-line" d="${path(real)}" stroke="var(--real)"/>
+    <circle class="dot-sim"  cx="${X(tEnd).toFixed(1)}" cy="${lastSim.toFixed(1)}"  r="4"/>
+    <circle class="dot-real" cx="${X(tEnd).toFixed(1)}" cy="${lastReal.toFixed(1)}" r="4"/>
+    <text class="series-label" fill="var(--sim)"  x="${M.l + PW + 11}" y="${simLabelY.toFixed(1)}">Simulation</text>
+    <text class="series-label" fill="var(--real)" x="${M.l + PW + 11}" y="${realLabelY.toFixed(1)}">Hardware</text>
+    <text class="axis-text" x="${M.l}" y="${M.t - 6}">heading (deg)</text>
+    <g id="hover"></g>`;
+
+  // stats
+  const err = t.map((_, i) => Math.abs(sim[i] - real[i]));
+  const rms = Math.sqrt(err.reduce((a, e) => a + e * e, 0) / err.length);
+  const peak = Math.max(...err);
+  const half = Math.floor(n / 2);
+  const growth = (err.slice(half).reduce((a, b) => a + b, 0) / (n - half)) /
+                 (err.slice(0, half).reduce((a, b) => a + b, 0) / half || 1);
+  // first time the error crosses 5 deg — a practical "policy is no longer valid" mark
+  const bi = err.findIndex(e => e > 5);
+  const budget = bi < 0 ? null : t[bi];
+  const held = budget === null ? tEnd.toFixed(1) + '+' : budget.toFixed(1);
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><span class="k">RMS divergence</span><span class="v">${rms.toFixed(1)}<span class="u">deg</span></span></div>
+    <div class="stat"><span class="k">Peak</span><span class="v">${peak.toFixed(1)}<span class="u">deg</span></span></div>
+    <div class="stat"><span class="k">Growth ratio</span><span class="v">${growth.toFixed(2)}<span class="u">×</span></span></div>
+    <div class="stat"><span class="k">Within 5°</span><span class="v">${held}<span class="u">s</span></span></div>`;
+
+  document.getElementById('chart-sub').textContent =
+    SCENARIO_NOTE[CURRENT] || 'Loaded run — shaded area is the running divergence.';
+
+  // table view (accessibility: identity never by color alone)
+  const stride = Math.max(1, Math.round(n / 11));   // ~11 rows whatever the run length
+  const rows = t.map((x, i) => i % stride === 0
+    ? `<tr><td>${x.toFixed(1)}</td><td>${sim[i].toFixed(2)}</td><td>${real[i].toFixed(2)}</td><td>${err[i].toFixed(2)}</td></tr>`
+    : '').join('');
+  document.getElementById('dtable').innerHTML =
+    `<thead><tr><th>t (s)</th><th>Simulation (°)</th><th>Hardware (°)</th><th>|Δ| (°)</th></tr></thead><tbody>${rows}</tbody>`;
+
+  document.getElementById('diag').innerHTML = DIAGNOSTICS.map(d => `
+    <div class="diag-row ${d.id === CURRENT ? 'hit' : ''}">
+      <div class="sev"></div>
+      <div>
+        <h4>${d.name}</h4>
+        <p class="sig">${d.sig}</p>
+        <p class="fix">${d.fix}</p>
+      </div>
+    </div>`).join('');
+
+  attachHover(X, Y, n);
+}
+
+/* crosshair + tooltip */
+function attachHover(X, Y, n) {
+  const svg = document.getElementById('chart');
+  const host = document.getElementById('chart-host');
+  let tip = host.querySelector('.tip');
+  if (!tip) { tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; host.appendChild(tip); }
+  const hover = svg.querySelector('#hover');
+
+  const move = e => {
+    const r = svg.getBoundingClientRect();
+    const sx = (e.clientX - r.left) * (W / r.width);
+    const frac = Math.max(0, Math.min(1, (sx - M.l) / PW));
+    const i = Math.round(frac * (n - 1));
+    const x = X(RUN.t[i]);
+    hover.innerHTML =
+      `<line class="crosshair" x1="${x.toFixed(1)}" y1="${M.t}" x2="${x.toFixed(1)}" y2="${M.t + PH}"/>
+       <circle class="dot-sim"  cx="${x.toFixed(1)}" cy="${Y(RUN.sim[i]).toFixed(1)}"  r="4.5"/>
+       <circle class="dot-real" cx="${x.toFixed(1)}" cy="${Y(RUN.real[i]).toFixed(1)}" r="4.5"/>`;
+    tip.hidden = false;
+    tip.innerHTML =
+      `<div class="tip-t">t = ${RUN.t[i].toFixed(2)} s</div>
+       <div class="tip-r"><span style="color:var(--sim)">Simulation</span><b>${RUN.sim[i].toFixed(2)}°</b></div>
+       <div class="tip-r"><span style="color:var(--real)">Hardware</span><b>${RUN.real[i].toFixed(2)}°</b></div>
+       <div class="tip-r" style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;">
+         <span>divergence</span><b>${Math.abs(RUN.sim[i] - RUN.real[i]).toFixed(2)}°</b></div>`;
+    const px = (x / W) * r.width;
+    tip.style.left = Math.min(r.width - 150, Math.max(0, px + 14)) + 'px';
+    tip.style.top = '10px';
+  };
+  svg.onpointermove = move;
+  svg.onpointerleave = () => { hover.innerHTML = ''; tip.hidden = true; };
+}
+
+$('f-scenario').addEventListener('change', e => {
+  CURRENT = e.target.value; RUN = makeRun(CURRENT); draw();
+});
+
+/* CSV loading — two files, matched by name */
+$('btn-load').addEventListener('click', () => $('file-in').click());
+$('file-in').addEventListener('change', async e => {
+  const files = [...e.target.files];
+  const pick = k => files.find(f => f.name.toLowerCase().includes(k));
+  const fs = pick('sim'), fr = pick('real');
+  if (!fs || !fr) {
+    alert('Select two CSVs — one filename containing "sim", one containing "real".');
+    return;
+  }
+  const parse = txt => txt.trim().split(/\r?\n/).slice(1)
+    .map(l => l.split(',').map(Number)).filter(r => r.length >= 2 && !isNaN(r[0]));
+  const [a, b] = await Promise.all([fs.text(), fr.text()]);
+  const A = parse(a), B = parse(b);
+  const n = Math.min(A.length, B.length);
+  if (!n) { alert('No numeric rows found. Expected columns: t,heading_deg'); return; }
+  RUN = { t: A.slice(0, n).map(r => r[0]), sim: A.slice(0, n).map(r => r[1]), real: B.slice(0, n).map(r => r[1]) };
+  CURRENT = 'loaded';
+  draw();
+});
+
+draw();
+</script>
+</body>
+</html>
